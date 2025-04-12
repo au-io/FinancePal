@@ -289,7 +289,34 @@ export class MemStorage implements IStorage {
       familyId: null
     };
     
-    return this.createUser(adminUser);
+    // Create the admin and create a demo family
+    const admin = await this.createUser(adminUser);
+    
+    // Create a demo family for admin
+    try {
+      const family = await this.createFamily({
+        name: "Demo Family",
+        createdBy: admin.id,
+      });
+      
+      // Add admin to the family
+      await this.addUserToFamily(admin.id, family.id);
+      
+      // Add a demo checking account
+      await this.createAccount({
+        name: "Demo Checking",
+        userId: admin.id,
+        category: "Checking",
+        icon: "account_balance",
+        balance: 5000,
+      });
+      
+      console.log("Created demo family and account for admin");
+    } catch (error) {
+      console.error("Error creating demo data:", error);
+    }
+    
+    return admin;
   }
 }
 

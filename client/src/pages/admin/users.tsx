@@ -11,10 +11,44 @@ import {
   Shield, 
   Users, 
   Search,
-  UserCog
+  UserCog,
+  UserPlus,
+  X
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { registerSchema } from "@shared/schema";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,11 +61,40 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
+// Form schema for adding new users
+const addUserSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Invalid email format"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  isAdmin: z.boolean().default(false),
+  familyId: z.number().nullable().default(null),
+  generatePassword: z.boolean().default(true),
+});
+
+type AddUserFormData = z.infer<typeof addUserSchema>;
+
 export default function AdminUsers() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [isPromoteDialogOpen, setIsPromoteDialogOpen] = useState(false);
+  const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [generatedPassword, setGeneratedPassword] = useState<string>('');
+  
+  // Add user form
+  const addUserForm = useForm<AddUserFormData>({
+    resolver: zodResolver(addUserSchema),
+    defaultValues: {
+      username: '',
+      name: '',
+      email: '',
+      password: '',
+      isAdmin: false,
+      familyId: null,
+      generatePassword: true,
+    },
+  });
 
   // Fetch users
   const { data: users, isLoading: isLoadingUsers } = useQuery({
@@ -41,6 +104,33 @@ export default function AdminUsers() {
   // Fetch families for reference
   const { data: families, isLoading: isLoadingFamilies } = useQuery({
     queryKey: ['/api/families'],
+  });
+
+  // Add user mutation
+  const addUserMutation = useMutation({
+    mutationFn: async (userData: AddUserFormData) => {
+      const res = await apiRequest('POST', '/api/register', userData);
+      return await res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+      toast({
+        title: 'User created successfully',
+        description: generatedPassword 
+          ? `User created with password: ${generatedPassword}` 
+          : 'User created successfully.',
+      });
+      setAddUserDialogOpen(false);
+      setGeneratedPassword('');
+      addUserForm.reset();
+    },
+    onError: (error) => {
+      toast({
+        title: 'Failed to create user',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
   });
 
   // Promote user to admin mutation
@@ -157,6 +247,13 @@ export default function AdminUsers() {
           <h1 className="text-2xl md:text-3xl font-heading font-semibold text-primary">Manage Users</h1>
           <p className="text-gray-600">Manage users and their roles</p>
         </div>
+        <Button 
+          onClick={() => setAddUserDialogOpen(true)}
+          className="mt-4 md:mt-0"
+        >
+          <Users className="h-4 w-4 mr-2" />
+          Add New User
+        </Button>
       </div>
 
       {/* Users Table */}
@@ -208,6 +305,191 @@ export default function AdminUsers() {
         </CardContent>
       </Card>
 
+      {/* Add User Dialog */}
+      <Dialog open={addUserDialogOpen} onOpenChange={setAddUserDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" />
+              Add New User
+            </DialogTitle>
+            <DialogDescription>
+              Create a new user account and optionally assign them to a family
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...addUserForm}>
+            <form onSubmit={addUserForm.handleSubmit((data) => {
+              // Generate a random password if needed
+              if (data.generatePassword) {
+                const randomPassword = Math.random().toString(36).substring(2, 10);
+                setGeneratedPassword(randomPassword);
+                data.password = randomPassword;
+              }
+              
+              addUserMutation.mutate(data);
+            })} className="space-y-4">
+              
+              <FormField
+                control={addUserForm.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Enter username" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={addUserForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Enter full name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={addUserForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="email" placeholder="Enter email address" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={addUserForm.control}
+                  name="generatePassword"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormControl>
+                        <Checkbox 
+                          checked={field.value} 
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>Generate random password</FormLabel>
+                        <FormDescription>
+                          Auto-generate a secure password
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={addUserForm.control}
+                  name="isAdmin"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormControl>
+                        <Checkbox 
+                          checked={field.value} 
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>Administrator</FormLabel>
+                        <FormDescription>
+                          Grant admin privileges
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
+              {!addUserForm.watch('generatePassword') && (
+                <FormField
+                  control={addUserForm.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input 
+                          {...field} 
+                          type="password" 
+                          placeholder="Enter password" 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              
+              {families && families.length > 0 && (
+                <FormField
+                  control={addUserForm.control}
+                  name="familyId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Family</FormLabel>
+                      <Select
+                        value={field.value?.toString() || ""}
+                        onValueChange={(value) => field.onChange(value ? parseInt(value) : null)}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a family (optional)" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="">No family</SelectItem>
+                          {families.map((family: any) => (
+                            <SelectItem key={family.id} value={family.id.toString()}>
+                              {family.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Assign this user to a family (optional)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              
+              <DialogFooter>
+                <Button 
+                  type="submit" 
+                  disabled={addUserMutation.isPending}
+                >
+                  {addUserMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create User'
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+      
       {/* Promote User Dialog */}
       <AlertDialog open={isPromoteDialogOpen} onOpenChange={setIsPromoteDialogOpen}>
         <AlertDialogContent>

@@ -17,10 +17,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2 } from 'lucide-react';
+import { Loader2, User, ShieldCheck } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 export default function AuthPage() {
   const [activeTab, setActiveTab] = useState('login');
+  const [loginType, setLoginType] = useState<'user' | 'admin'>('user');
   const { user, loginMutation, registerMutation } = useAuth();
   const [, navigate] = useLocation();
 
@@ -35,10 +38,25 @@ export default function AuthPage() {
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      username: '',
+      username: loginType === 'admin' ? 'admin' : '',
       password: '',
     },
   });
+
+  // Update username field when login type changes
+  useEffect(() => {
+    if (loginType === 'admin') {
+      loginForm.setValue('username', 'admin');
+    } else {
+      loginForm.setValue('username', '');
+    }
+  }, [loginType, loginForm]);
+  
+  // Handle form submission for login
+  const handleLoginSubmit = (values: z.infer<typeof loginSchema>) => {
+    // Always use the username from form values (could be 'admin' or user input)
+    loginMutation.mutate(values);
+  };
 
   // Register form setup
   const registerForm = useForm<z.infer<typeof registerSchema>>({
@@ -92,6 +110,27 @@ export default function AuthPage() {
             <TabsContent value="login">
               <Form {...loginForm}>
                 <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
+                  <div className="flex items-center justify-center space-x-2 mb-4">
+                    <RadioGroup 
+                      value={loginType} 
+                      onValueChange={(value) => setLoginType(value as 'user' | 'admin')} 
+                      className="flex flex-row space-x-4"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="user" id="user" />
+                        <Label htmlFor="user" className="flex items-center">
+                          <User className="h-4 w-4 mr-1" /> User
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="admin" id="admin" />
+                        <Label htmlFor="admin" className="flex items-center">
+                          <ShieldCheck className="h-4 w-4 mr-1" /> Admin
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                
                   <FormField
                     control={loginForm.control}
                     name="username"
@@ -103,6 +142,7 @@ export default function AuthPage() {
                             {...field} 
                             placeholder="Enter your username" 
                             autoComplete="username"
+                            disabled={loginType === 'admin'}
                           />
                         </FormControl>
                         <FormMessage />
