@@ -1,23 +1,19 @@
 import React from 'react';
+import iconPath from "@assets/icon_1744477817841.png";
 
 export function Logo({ size = 'medium' }: { size?: 'small' | 'medium' | 'large' }) {
-  const sizeClasses = {
-    small: 'w-8 h-8',
-    medium: 'w-12 h-12',
-    large: 'w-24 h-24',
+  const sizes = {
+    small: 'w-6 h-6',
+    medium: 'w-8 h-8',
+    large: 'w-12 h-12',
   };
 
   return (
-    <svg 
-      className={sizeClasses[size]} 
-      viewBox="0 0 200 200" 
-      fill="none" 
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <circle cx="100" cy="100" r="90" fill="#F8A100" stroke="#7F5539" strokeWidth="10" />
-      <circle cx="100" cy="100" r="70" fill="#F8A100" stroke="#F9B234" strokeWidth="5" />
-      <path d="M100 50C93.3333 50 78 60 78 80C78 100 93.3333 120 100 140C106.667 120 122 100 122 80C122 60 106.667 50 100 50Z" fill="#0F766E" />
-    </svg>
+    <img 
+      src={iconPath} 
+      alt="JoBa Finance Logo" 
+      className={`${sizes[size]} object-contain`}
+    />
   );
 }
 
@@ -28,11 +24,11 @@ interface LogoWithTextProps {
 }
 
 export function LogoWithText({ 
-  size = 'medium',
+  size = 'medium', 
   textSize = 'xl',
-  withSubtitle = false 
+  withSubtitle = false,
 }: LogoWithTextProps) {
-  const textSizeClass = {
+  const textSizes = {
     sm: 'text-sm',
     normal: 'text-base',
     lg: 'text-lg',
@@ -44,12 +40,12 @@ export function LogoWithText({
   return (
     <div className="flex items-center">
       <Logo size={size} />
-      <div className="ml-3">
-        <h1 className={`${textSizeClass[textSize]} font-heading font-semibold text-primary`}>
+      <div className="ml-2">
+        <h1 className={`${textSizes[textSize]} font-bold text-primary`}>
           JoBa Finance
         </h1>
         {withSubtitle && (
-          <p className="text-xs text-gray-500">Family Finance</p>
+          <p className="text-xs text-gray-500">Family Finance Management</p>
         )}
       </div>
     </div>

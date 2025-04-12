@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { Route, useLocation, useRoute } from "wouter";
+import { useEffect } from "react";
 
 export function ProtectedRoute({
   path,
@@ -15,6 +16,17 @@ export function ProtectedRoute({
   const [isMatchingRoute] = useRoute(path);
   const [, navigate] = useLocation();
 
+  // Handle navigation using effects instead of during render
+  useEffect(() => {
+    if (isMatchingRoute && !isLoading) {
+      if (!user) {
+        navigate("/auth");
+      } else if (adminRequired && !user.isAdmin) {
+        navigate("/");
+      }
+    }
+  }, [isMatchingRoute, isLoading, user, adminRequired, navigate]);
+
   if (isMatchingRoute) {
     if (isLoading) {
       return (
@@ -24,13 +36,7 @@ export function ProtectedRoute({
       );
     }
 
-    if (!user) {
-      navigate("/auth");
-      return null;
-    }
-
-    if (adminRequired && !user.isAdmin) {
-      navigate("/");
+    if (!user || (adminRequired && !user.isAdmin)) {
       return null;
     }
 
