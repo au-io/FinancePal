@@ -47,7 +47,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Families CRUD
   app.post("/api/families", requireAdmin, async (req, res, next) => {
     try {
-      const parsedData = insertFamilySchema.parse(req.body);
+      // Add the current user's ID as the createdBy field
+      const familyData = {
+        ...req.body,
+        createdBy: req.user!.id
+      };
+      
+      const parsedData = insertFamilySchema.parse(familyData);
       const family = await storage.createFamily(parsedData);
       res.status(201).json(family);
     } catch (error) {

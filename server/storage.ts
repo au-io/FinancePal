@@ -125,7 +125,13 @@ export class MemStorage implements IStorage {
   // Family management
   async createFamily(insertFamily: InsertFamily): Promise<Family> {
     const id = this.familyCurrentId++;
-    const family: Family = { ...insertFamily, id, createdAt: new Date() };
+    const family: Family = { 
+      ...insertFamily, 
+      id, 
+      createdAt: new Date(),
+      // Ensure currency has a default value if not provided
+      currency: insertFamily.currency || 'USD'
+    };
     this.families.set(id, family);
     return family;
   }
@@ -297,6 +303,7 @@ export class MemStorage implements IStorage {
       const family = await this.createFamily({
         name: "Demo Family",
         createdBy: admin.id,
+        currency: "USD"
       });
       
       // Add admin to the family

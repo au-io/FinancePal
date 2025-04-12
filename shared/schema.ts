@@ -29,12 +29,14 @@ export type User = typeof users.$inferSelect;
 export const families = pgTable("families", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
+  currency: text("currency").default("USD").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   createdBy: integer("created_by").notNull(),
 });
 
 export const insertFamilySchema = createInsertSchema(families).pick({
   name: true,
+  currency: true,
   createdBy: true,
 });
 
