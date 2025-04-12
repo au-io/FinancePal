@@ -1,0 +1,131 @@
+
+Create a full-stack personal finance web application called JoBa Finance, built for families and couples to collaboratively manage and analyze their finances.
+
+Core Features:
+
+1. User Management
+
+Two user roles:
+
+Admin: Manages families and admin accounts.
+
+User: Manages their own finances and sees a read-only view of other family members' finances.
+
+Authentication:
+
+Implement secure login/signup with hashed passwords.
+
+Admin account should be auto-created on first deploy with a secure, randomly generated password (e.g., printed to console).
+
+Admins can create/manage families and assign users to them.
+
+Users are linked to a family and cannot switch families themselves.
+
+2. Family Structure
+
+A family is a group of users.
+
+Admins can:
+
+Create new families.
+
+Add/remove users to/from families.
+
+Promote users to admin (optional: restrict to super-admin).
+
+3. Accounts (Wallets)
+
+Each user can:
+
+Create multiple accounts.
+
+Account has:
+
+Name (e.g., "Salary Account - Barclays", "Credit Card - HSBC").
+
+Optional icon/image.
+
+Category (e.g., Salary, Savings, Credit, Loan).
+
+4. Transactions
+
+Add transactions with:
+
+Source Account (dropdown).
+
+Amount.
+
+Type: Income, Expense, Transfer.
+
+Category (autocomplete with option to add new ones).
+
+Date/Time (auto-populated, editable).
+
+Frequency:
+
+One-Time.
+
+Regular (recurring):
+
+Monthly (e.g., 1st of each month).
+
+Yearly (e.g., Jan 10).
+
+Every X days (user-defined cadence).
+
+Transfers require:
+
+Source and destination account.
+
+Transfer type.
+
+Prevent negative balances in source account.
+
+Ability to upload CSV file to bulk import transactions (validate columns and content).
+
+5. Family View
+
+Users can view read-only summaries of other members in their family:
+
+Account balances.
+
+Transaction summaries.
+
+Spending categories.
+
+6. Analytics Dashboard
+
+Toggle between Personal and Family views.
+
+Visuals include:
+
+Calendar view with daily spending/income.
+
+Monthly expense pie charts.
+
+Income vs Expense bar/line charts.
+
+Account balance trends.
+
+Color code:
+
+Income (green), Expense (red), Warnings/Issues (orange).
+
+Predictive analytics:
+
+End-of-year projected savings/spending.
+
+Expense growth rate over time.
+
+Category-based overspending alerts.
+
+Regular expense risk forecasts (e.g., subscriptions growing).
+
+Cash flow forecast by account.
+
+7. Data Export
+
+Export filtered transactions (by date or date range) as CSV.
+
+Use technical stack of your choice and database of your choice 
+
