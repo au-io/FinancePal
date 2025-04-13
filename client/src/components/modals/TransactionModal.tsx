@@ -152,9 +152,15 @@ export function TransactionModal({
   // Handle new category submission
   const handleNewCategorySubmit = () => {
     if (newCategory.trim()) {
-      form.setValue('category', newCategory.trim());
+      const formattedCategory = newCategory.trim();
+      // Set form value with the formatted category
+      form.setValue('category', formattedCategory);
+      // Reset UI state
       setNewCategory('');
       setShowNewCategoryInput(false);
+      
+      // Force update the form to recognize the change
+      form.trigger('category');
     }
   };
 
