@@ -9,6 +9,7 @@ import {
   Home,
   Wallet,
   DollarSign,
+  Tag,
   Users,
   BarChart2,
   UserCheck,
@@ -47,6 +48,11 @@ export function Sidebar() {
       href: '/transactions', 
       label: 'Transactions', 
       icon: <DollarSign className="h-5 w-5 mr-3" /> 
+    },
+    { 
+      href: '/categories', 
+      label: 'Categories', 
+      icon: <Tag className="h-5 w-5 mr-3" /> 
     },
     { 
       href: '/family', 

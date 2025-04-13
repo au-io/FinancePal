@@ -9,6 +9,7 @@ import AuthPage from "@/pages/auth-page";
 import Dashboard from "@/pages/dashboard";
 import Accounts from "@/pages/accounts";
 import Transactions from "@/pages/transactions";
+import Categories from "@/pages/categories";
 import Family from "@/pages/family";
 import Analytics from "@/pages/analytics";
 import AdminFamilies from "@/pages/admin/families";
@@ -20,6 +21,7 @@ function Router() {
       <ProtectedRoute path="/" component={Dashboard} />
       <ProtectedRoute path="/accounts" component={Accounts} />
       <ProtectedRoute path="/transactions" component={Transactions} />
+      <ProtectedRoute path="/categories" component={Categories} />
       <ProtectedRoute path="/family" component={Family} />
       <ProtectedRoute path="/analytics" component={Analytics} />
       <ProtectedRoute path="/admin/families" component={AdminFamilies} adminRequired={true} />
