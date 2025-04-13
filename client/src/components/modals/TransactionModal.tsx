@@ -239,7 +239,7 @@ export function TransactionModal({
                   <FormItem>
                     <FormLabel>To Account</FormLabel>
                     <Select 
-                      value={field.value?.toString() || ''} 
+                      value={field.value?.toString() || '0'} 
                       onValueChange={(value) => field.onChange(parseInt(value))}
                     >
                       <FormControl>
@@ -248,6 +248,7 @@ export function TransactionModal({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value="0">Select an account</SelectItem>
                         {accounts
                           .filter(account => account.id !== form.watch('sourceAccountId'))
                           .map((account) => (
