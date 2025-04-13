@@ -52,6 +52,7 @@ import {
   transactionTypes,
   transactionFrequencies 
 } from '@shared/schema';
+import { useCategories } from '@/hooks/use-categories';
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -77,6 +78,7 @@ export function TransactionModal({
   isSubmitting = false
 }: TransactionModalProps) {
   const isEditing = !!editingTransaction;
+  const { customCategories, addCategory } = useCategories();
   const [showRecurringOptions, setShowRecurringOptions] = useState(false);
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
   const [newCategory, setNewCategory] = useState('');
@@ -153,6 +155,8 @@ export function TransactionModal({
   const handleNewCategorySubmit = () => {
     if (newCategory.trim()) {
       const formattedCategory = newCategory.trim();
+      // Add to global custom categories
+      addCategory(formattedCategory);
       // Set form value with the formatted category
       form.setValue('category', formattedCategory);
       // Reset UI state
@@ -325,13 +329,28 @@ export function TransactionModal({
                       </FormControl>
                       <SelectContent>
                         <SelectGroup>
-                          <SelectLabel>Common Categories</SelectLabel>
+                          <SelectLabel>System Categories</SelectLabel>
                           {transactionCategories.map((category) => (
                             <SelectItem key={category} value={category}>
                               {category}
                             </SelectItem>
                           ))}
                         </SelectGroup>
+                        
+                        {customCategories.length > 0 && (
+                          <>
+                            <SelectSeparator />
+                            <SelectGroup>
+                              <SelectLabel>Custom Categories</SelectLabel>
+                              {customCategories.map((category) => (
+                                <SelectItem key={`custom-${category}`} value={category}>
+                                  {category}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </>
+                        )}
+                        
                         <SelectSeparator />
                         <SelectItem value="custom">
                           <div className="flex items-center">
