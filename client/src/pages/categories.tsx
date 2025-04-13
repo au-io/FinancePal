@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator'; 
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest, queryClient } from '@/lib/queryClient';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -16,17 +14,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { PlusCircle, Pencil, Trash } from 'lucide-react';
+import { PlusCircle, Trash } from 'lucide-react';
 import { transactionCategories } from '@shared/schema';
+import { useCategories } from '@/hooks/use-categories';
 
 export default function Categories() {
   const { toast } = useToast();
+  const { customCategories, addCategory, removeCategory } = useCategories();
   const [newCategory, setNewCategory] = useState('');
-  const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
-  
-  // For now, we'll just manage the categories locally in state since
-  // we don't have a categories table in the database yet
   
   // Function to add a new category
   const handleAddCategory = () => {
@@ -46,7 +42,7 @@ export default function Categories() {
       return;
     }
     
-    setCustomCategories(prev => [...prev, newCategory.trim()]);
+    addCategory(newCategory.trim());
     setNewCategory('');
     
     toast({
@@ -63,7 +59,7 @@ export default function Categories() {
   // Confirm deletion
   const confirmDeleteCategory = () => {
     if (categoryToDelete) {
-      setCustomCategories(prev => prev.filter(cat => cat !== categoryToDelete));
+      removeCategory(categoryToDelete);
       
       toast({
         title: "Category removed",
