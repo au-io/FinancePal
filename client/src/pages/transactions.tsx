@@ -47,7 +47,7 @@ export default function Transactions() {
   // Build query string for filtering
   const buildQueryString = () => {
     const params = new URLSearchParams();
-    if (selectedAccountId) {
+    if (selectedAccountId && selectedAccountId !== 'all') {
       params.append('accountId', selectedAccountId);
     }
     if (dateRange?.from) {
@@ -67,7 +67,7 @@ export default function Transactions() {
   // Filter transactions by type
   const filteredTransactions = React.useMemo(() => {
     if (!transactions) return [];
-    if (!selectedType) return transactions;
+    if (!selectedType || selectedType === 'all') return transactions;
     return transactions.filter((tx: Transaction) => tx.type === selectedType);
   }, [transactions, selectedType]);
 
@@ -287,12 +287,12 @@ export default function Transactions() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Account</label>
-              <Select value={selectedAccountId || ''} onValueChange={setSelectedAccountId}>
+              <Select value={selectedAccountId || 'all'} onValueChange={setSelectedAccountId}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Accounts" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Accounts</SelectItem>
+                  <SelectItem value="all">All Accounts</SelectItem>
                   {accounts?.map((account: any) => (
                     <SelectItem key={account.id} value={account.id.toString()}>
                       {account.name}
@@ -304,12 +304,12 @@ export default function Transactions() {
             
             <div>
               <label className="block text-sm font-medium mb-1">Type</label>
-              <Select value={selectedType || ''} onValueChange={setSelectedType}>
+              <Select value={selectedType || 'all'} onValueChange={setSelectedType}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Types" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Types</SelectItem>
+                  <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="Income">Income</SelectItem>
                   <SelectItem value="Expense">Expense</SelectItem>
                   <SelectItem value="Transfer">Transfer</SelectItem>
