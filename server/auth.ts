@@ -32,10 +32,10 @@ export async function setupAuth(app: Express) {
   // Create initial admin user on startup
   const adminUser = await storage.createInitialAdmin();
   if (adminUser) {
-    // Hash the admin password before storing
-    const hashedPassword = await hashPassword(adminUser.password);
+    // We need to hash the admin password since we're using a fixed password
+    const hashedPassword = await hashPassword("admin123");
     await storage.updateUser(adminUser.id, { password: hashedPassword });
-    console.log('Admin user configured with username: "admin"');
+    console.log('Admin user configured with username: "admin" and password: "admin123"');
   }
 
   const sessionSettings: session.SessionOptions = {

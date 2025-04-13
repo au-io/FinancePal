@@ -281,14 +281,13 @@ export class MemStorage implements IStorage {
       return existingAdmin;
     }
     
-    // Generate a random password
-    const randomPassword = randomBytes(8).toString('hex');
-    console.log('Generated admin password:', randomPassword);
+    // Use a consistent password for development
+    const adminPassword = "admin123";
     
     // Create admin user
     const adminUser: InsertUser = {
       username: "admin",
-      password: randomPassword, // This will be hashed by the auth system
+      password: adminPassword, // Will be hashed in setupAuth
       name: "Admin User",
       email: "admin@jobafinance.com",
       isAdmin: true,
