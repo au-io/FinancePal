@@ -22,21 +22,24 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
+  SelectSeparator,
 } from '@/components/ui/select';
 import {
   ToggleGroup,
   ToggleGroupItem,
 } from '@/components/ui/toggle-group';
 import { Input } from '@/components/ui/input';
-import { Calendar } from '@/components/ui/calendar';
-import {
+import { 
   Popover,
   PopoverContent,
-  PopoverTrigger,
+  PopoverTrigger 
 } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { format } from 'date-fns';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -75,6 +78,8 @@ export function TransactionModal({
 }: TransactionModalProps) {
   const isEditing = !!editingTransaction;
   const [showRecurringOptions, setShowRecurringOptions] = useState(false);
+  const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
+  const [newCategory, setNewCategory] = useState('');
 
   // Set up form with initial values
   const form = useForm<z.infer<typeof formSchema>>({
@@ -142,6 +147,15 @@ export function TransactionModal({
     const isRecurring = value === 'recurring';
     form.setValue('isRecurring', isRecurring);
     setShowRecurringOptions(isRecurring);
+  };
+
+  // Handle new category submission
+  const handleNewCategorySubmit = () => {
+    if (newCategory.trim()) {
+      form.setValue('category', newCategory.trim());
+      setNewCategory('');
+      setShowNewCategoryInput(false);
+    }
   };
 
   // Handle form submission
