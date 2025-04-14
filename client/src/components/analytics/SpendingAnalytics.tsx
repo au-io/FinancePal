@@ -182,35 +182,35 @@ export function SpendingAnalytics({ transactions, timeframe }: SpendingAnalytics
             <TabsTrigger value="category">By Category</TabsTrigger>
             <TabsTrigger value="monthly">Monthly Trend</TabsTrigger>
           </TabsList>
+          
+          <TabsContent value="category">
+            {/* Top spending categories summary */}
+            {categoryData.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 mt-4">
+                {categoryData.slice(0, 3).map((category, index) => (
+                  <Card key={index} className="bg-gray-50 border-0">
+                    <CardContent className="pt-6">
+                      <h3 className="text-gray-600 text-sm">{category.name}</h3>
+                      <p className="text-2xl font-semibold mt-1 text-red-500">
+                        {formatCurrency(category.value)}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {((category.value / categoryData.reduce((sum, cat) => sum + cat.value, 0)) * 100).toFixed(1)}% of total
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+            {renderPieChart()}
+          </TabsContent>
+          
+          <TabsContent value="monthly">
+            {renderBarChart()}
+          </TabsContent>
         </Tabs>
       </CardHeader>
       <CardContent>
-        {/* Top spending categories summary */}
-        {view === 'category' && categoryData.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            {categoryData.slice(0, 3).map((category, index) => (
-              <Card key={index} className="bg-gray-50 border-0">
-                <CardContent className="pt-6">
-                  <h3 className="text-gray-600 text-sm">{category.name}</h3>
-                  <p className="text-2xl font-semibold mt-1 text-red-500">
-                    {formatCurrency(category.value)}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {((category.value / categoryData.reduce((sum, cat) => sum + cat.value, 0)) * 100).toFixed(1)}% of total
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-        
-        {/* Charts */}
-        <TabsContent value="category">
-          {renderPieChart()}
-        </TabsContent>
-        <TabsContent value="monthly">
-          {renderBarChart()}
-        </TabsContent>
       </CardContent>
     </Card>
   );
