@@ -206,6 +206,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user!.id;
       const transactionData = { ...req.body, userId };
       
+      // Convert date string to Date object if it's a string
+      if (transactionData.date && typeof transactionData.date === 'string') {
+        transactionData.date = new Date(transactionData.date);
+      }
+      
       // Validate transaction data
       const parsedData = insertTransactionSchema.parse(transactionData);
       
@@ -307,7 +312,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const updatedTransaction = await storage.updateTransaction(transactionId, req.body);
+      // Handle date conversion if present
+      const updatedData = { ...req.body };
+      if (updatedData.date && typeof updatedData.date === 'string') {
+        updatedData.date = new Date(updatedData.date);
+      }
+      
+      const updatedTransaction = await storage.updateTransaction(transactionId, updatedData);
       res.json(updatedTransaction);
     } catch (error) {
       next(error);

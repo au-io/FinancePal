@@ -173,6 +173,8 @@ export function TransactionModal({
     // Prepare values before submitting
     const submissionValues = {
       ...values,
+      // Convert Date object to ISO string for server-side parsing
+      date: values.date instanceof Date ? values.date.toISOString() : values.date,
       // Clear destination account if not a transfer
       destinationAccountId: values.type === 'Transfer' ? values.destinationAccountId : undefined,
       // Clear frequency fields if not recurring
