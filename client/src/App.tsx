@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/hooks/use-auth";
 import { CategoryProvider } from "@/hooks/use-categories";
+import { CurrencyProvider } from "@/hooks/use-currency";
 import { ProtectedRoute } from "./lib/protected-route";
 import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
@@ -37,10 +38,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <CategoryProvider>
-          <Router />
-          <Toaster />
-        </CategoryProvider>
+        <CurrencyProvider>
+          <CategoryProvider>
+            <Router />
+            <Toaster />
+          </CategoryProvider>
+        </CurrencyProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
