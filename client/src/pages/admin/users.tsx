@@ -112,13 +112,13 @@ export default function AdminUsers() {
     mutationFn: async (userData: AddUserFormData) => {
       console.log('Submitting user data:', userData);
       try {
-        const res = await apiRequest('POST', '/api/register', userData);
-        console.log('Registration response:', res);
+        const res = await apiRequest('POST', '/api/admin/users', userData);
+        console.log('Admin user creation response:', res);
         const data = await res.json();
-        console.log('Registration data:', data);
+        console.log('Admin user creation data:', data);
         return data;
       } catch (error) {
-        console.error('Registration error:', error);
+        console.error('Admin user creation error:', error);
         throw error;
       }
     },

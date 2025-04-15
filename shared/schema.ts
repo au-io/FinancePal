@@ -121,6 +121,7 @@ export const loginSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
+// For users registering themselves (needs confirmPassword)
 export const registerSchema = insertUserSchema.extend({
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string().min(6, "Confirm password must be at least 6 characters"),
@@ -129,5 +130,12 @@ export const registerSchema = insertUserSchema.extend({
   path: ["confirmPassword"],
 });
 
+// For admin creating users (no confirmPassword needed)
+export const adminUserSchema = insertUserSchema.extend({
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  generatePassword: z.boolean().optional(),
+});
+
 export type LoginData = z.infer<typeof loginSchema>;
 export type RegisterData = z.infer<typeof registerSchema>;
+export type AdminUserData = z.infer<typeof adminUserSchema>;

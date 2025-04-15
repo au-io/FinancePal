@@ -5,7 +5,14 @@ import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import { User as SelectUser, RegisterData, LoginData } from "@shared/schema";
+import { 
+  User as SelectUser, 
+  RegisterData, 
+  LoginData, 
+  AdminUserData,
+  adminUserSchema,
+  registerSchema
+} from "@shared/schema";
 
 declare global {
   namespace Express {
@@ -79,49 +86,94 @@ export async function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/register", async (req, res, next) => {
+  // Create a separate endpoint for admin-created users
+  app.post("/api/admin/users", async (req, res, next) => {
     try {
-      console.log('Registration request body:', req.body);
-      // Skip confirmPassword validation for admin-created users
-      // or handle userData as basic InsertUser type
-      const userData = req.body;
+      console.log('Admin user creation request body:', req.body);
+      
+      // Verify this is an admin making the request
+      if (!req.isAuthenticated() || !(req.user as SelectUser).isAdmin) {
+        return res.status(403).json({ message: "Only admins can create users through this endpoint" });
+      }
+      
+      // Validate admin user creation data
+      let userData;
+      try {
+        userData = adminUserSchema.parse(req.body);
+      } catch (error) {
+        console.error('Admin user validation error:', error);
+        return res.status(400).json({ message: "Invalid user data", error });
+      }
       
       const existingUser = await storage.getUserByUsername(userData.username);
       if (existingUser) {
         return res.status(400).json({ message: "Username already exists" });
       }
 
-      // Extract only the fields needed for user creation
+      // Create the user
+      const hashedPassword = await hashPassword(userData.password);
       const userToCreate = {
-        username: userData.username,
+        ...userData,
+        password: hashedPassword
+      };
+      
+      console.log('Admin creating user with data:', { 
+        ...userToCreate, 
+        password: '[REDACTED]' 
+      });
+      
+      const user = await storage.createUser(userToCreate);
+      console.log('User created by admin:', { id: user.id, username: user.username });
+      
+      // Don't log in as the newly created user
+      const { password, ...userWithoutPassword } = user;
+      return res.status(201).json(userWithoutPassword);
+    } catch (error) {
+      console.error('Error in admin user creation:', error);
+      next(error);
+    }
+  });
+
+  // Normal user registration endpoint (with confirmPassword)
+  app.post("/api/register", async (req, res, next) => {
+    try {
+      console.log('User registration request body:', req.body);
+      
+      let userData;
+      try {
+        userData = registerSchema.parse(req.body);
+      } catch (error) {
+        console.error('User registration validation error:', error);
+        return res.status(400).json({ message: "Invalid registration data", error });
+      }
+      
+      const existingUser = await storage.getUserByUsername(userData.username);
+      if (existingUser) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+
+      // Extract only the fields needed for user creation and exclude confirmPassword
+      const { confirmPassword, ...userDataWithoutConfirm } = userData;
+      const userToCreate = {
+        ...userDataWithoutConfirm,
         password: await hashPassword(userData.password),
-        name: userData.name,
-        email: userData.email,
-        isAdmin: userData.isAdmin || false,
-        familyId: userData.familyId || null
+        isAdmin: false // Never allow self-registration as admin
       };
 
       console.log('Creating user with data:', { ...userToCreate, password: '[REDACTED]' });
       const user = await storage.createUser(userToCreate);
-      console.log('User created:', { id: user.id, username: user.username });
+      console.log('User created through self-registration:', { id: user.id, username: user.username });
 
-      // Only log in the user if this is a self-registration (not admin creating a user)
-      if (req.isAuthenticated() && (req.user as SelectUser).isAdmin) {
-        // Admin creating a user - don't log in as the new user
+      // Self-registration - log in as the new user
+      req.login(user, (err) => {
+        if (err) return next(err);
+        
+        // Don't return the password in the response
         const { password, ...userWithoutPassword } = user;
-        return res.status(201).json(userWithoutPassword);
-      } else {
-        // Self-registration - log in as the new user
-        req.login(user, (err) => {
-          if (err) return next(err);
-          
-          // Don't return the password in the response
-          const { password, ...userWithoutPassword } = user;
-          res.status(201).json(userWithoutPassword);
-        });
-      }
+        res.status(201).json(userWithoutPassword);
+      });
     } catch (error) {
-      console.error('Error in registration:', error);
+      console.error('Error in user registration:', error);
       next(error);
     }
   });
