@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from './use-auth';
+import { Family } from '@shared/schema';
 
 // Define available currency options
 export type CurrencyType = 'USD' | 'GBP' | 'EUR' | 'INR' | 'JPY';
@@ -20,26 +21,31 @@ interface CurrencyContextType {
   setCurrency: (currency: CurrencyType) => void;
 }
 
-export const CurrencyContext = createContext<CurrencyContextType>({
-  currency: 'USD',
-  currencySymbol: '$',
+// Initial context setup
+const defaultCurrency: CurrencyType = 'GBP';
+
+const contextValue: CurrencyContextType = {
+  currency: defaultCurrency,
+  currencySymbol: currencySymbols[defaultCurrency],
   setCurrency: () => {}
-});
+};
+
+export const CurrencyContext = createContext<CurrencyContextType>(contextValue);
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
-  const [currency, setCurrency] = useState<CurrencyType>('USD');
+  const [currency, setCurrency] = useState<CurrencyType>(defaultCurrency);
   const { user } = useAuth();
   
   // If user is part of a family, get the family's currency
-  const { data: families } = useQuery({
+  const { data: families } = useQuery<Family[]>({
     queryKey: ['/api/families'],
     enabled: !!user?.familyId,
   });
 
   useEffect(() => {
     if (user?.familyId && families) {
-      const family = families.find((f: any) => f.id === user.familyId);
-      if (family && family.currency) {
+      const family = families.find(f => f.id === user.familyId);
+      if (family && family.currency && family.currency in currencySymbols) {
         setCurrency(family.currency as CurrencyType);
       }
     }

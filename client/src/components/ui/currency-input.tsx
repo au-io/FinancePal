@@ -1,4 +1,4 @@
-import React, { forwardRef, useState } from 'react';
+import React, { forwardRef, useState, useRef, useEffect } from 'react';
 import { Input, InputProps } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useCurrency } from '@/hooks/use-currency';
@@ -18,21 +18,36 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     decimalPlaces = 2,
     className,
     ...props 
-  }, ref) => {
+  }, forwardedRef) => {
+    // Create an internal ref that we can rely on
+    const innerRef = useRef<HTMLInputElement>(null);
+    
+    // Combine refs for forwarding
+    useEffect(() => {
+      if (!forwardedRef) return;
+      
+      if (typeof forwardedRef === 'function') {
+        forwardedRef(innerRef.current);
+      } else if (forwardedRef) {
+        forwardedRef.current = innerRef.current;
+      }
+    }, [forwardedRef]);
+    
     // Get current currency symbol from context
     const { currencySymbol: contextCurrencySymbol } = useCurrency();
     
-    // Use provided symbol or the one from context
-    const symbolToUse = currencySymbol || contextCurrencySymbol;
+    // Use provided symbol or the one from context (default to £ for GBP if neither available)
+    const symbolToUse = currencySymbol || contextCurrencySymbol || '£';
     
-    // State to hold input value
-    const [inputText, setInputText] = useState('');
+    // State to hold unformatted input value
+    const [rawInput, setRawInput] = useState<string>('');
+    const [isFocused, setIsFocused] = useState<boolean>(false);
 
     // Format value for display
     const formatValue = (val: number | string): string => {
-      if (inputText && document.activeElement === ref?.current) {
-        // If user is currently editing, show unformatted input
-        return inputText;
+      if (isFocused && rawInput !== '') {
+        // If user is currently editing, show unformatted raw input
+        return rawInput;
       } else {
         // Otherwise show the formatted value
         const numValue = typeof val === 'string' ? parseFloat(val) || 0 : val;
@@ -44,37 +59,41 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const inputValue = e.target.value;
       
-      // Store raw input for display while editing
-      setInputText(inputValue);
+      // Store raw input
+      setRawInput(inputValue);
       
       // Remove any non-numeric characters except decimal point
-      const sanitizedValue = inputValue.replace(/[^\d.]/g, '');
+      let sanitizedValue = inputValue.replace(/[^\d.]/g, '');
       
-      // Enforce proper decimal format (only one decimal point, max 2 decimal places)
-      if (sanitizedValue.includes('.')) {
+      // Ensure only one decimal point
+      const decimalCount = (sanitizedValue.match(/\./g) || []).length;
+      if (decimalCount > 1) {
+        const parts = sanitizedValue.split('.');
+        sanitizedValue = parts[0] + '.' + parts.slice(1).join('');
+      }
+      
+      // Process the value
+      if (sanitizedValue === '' || sanitizedValue === '.') {
+        onChange(0);
+      } else if (sanitizedValue.includes('.')) {
         const [whole, decimal] = sanitizedValue.split('.');
-        const formattedDecimal = decimal.slice(0, decimalPlaces);
-        const formattedValue = whole + (formattedDecimal ? '.' + formattedDecimal : '');
-        
-        // Check if the value is a valid number
-        if (!isNaN(parseFloat(formattedValue))) {
-          onChange(parseFloat(formattedValue));
-        } else if (formattedValue === '' || formattedValue === '.') {
-          onChange(0);
-        }
+        // Only allow specified decimal places
+        const truncatedDecimal = decimal.slice(0, decimalPlaces);
+        const formattedValue = whole + '.' + truncatedDecimal;
+        onChange(parseFloat(formattedValue));
       } else {
-        // No decimal point
-        if (!isNaN(parseFloat(sanitizedValue))) {
-          onChange(parseFloat(sanitizedValue));
-        } else if (sanitizedValue === '') {
-          onChange(0);
-        }
+        onChange(parseFloat(sanitizedValue));
       }
     };
     
-    // When input loses focus, reset to formatted value
+    // Handle focus and blur events
+    const handleFocus = () => {
+      setIsFocused(true);
+    };
+    
     const handleBlur = () => {
-      setInputText('');
+      setIsFocused(false);
+      setRawInput('');
     };
 
     return (
@@ -83,10 +102,11 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
           {symbolToUse}
         </div>
         <Input
-          ref={ref}
+          ref={innerRef}
           type="text"
           value={formatValue(value)}
           onChange={handleInputChange}
+          onFocus={handleFocus}
           onBlur={handleBlur}
           className={cn("pl-7", className)}
           {...props}

@@ -50,7 +50,7 @@ const currencies = [
 // Form schema
 const familyFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
-  currency: z.string().default('USD'),
+  currency: z.string().default('GBP'),
 });
 
 type FamilyFormData = z.infer<typeof familyFormSchema>;
@@ -69,7 +69,7 @@ export function FamilyModal({ isOpen, onClose, onSuccess }: FamilyModalProps) {
     resolver: zodResolver(familyFormSchema),
     defaultValues: {
       name: '',
-      currency: 'USD',
+      currency: 'GBP',
     },
   });
   

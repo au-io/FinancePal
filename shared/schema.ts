@@ -29,7 +29,7 @@ export type User = typeof users.$inferSelect;
 export const families = pgTable("families", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  currency: text("currency").default("USD").notNull(),
+  currency: text("currency").default("GBP").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   createdBy: integer("created_by").notNull(),
 });
