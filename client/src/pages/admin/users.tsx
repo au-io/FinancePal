@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -201,6 +201,67 @@ export default function AdminUsers() {
     }
   };
 
+  // Handle editing user
+  const [editUserDialogOpen, setEditUserDialogOpen] = useState(false);
+  const [selectedUserForEdit, setSelectedUserForEdit] = useState<any>(null);
+
+  // Edit user form
+  const editUserForm = useForm<any>({
+    resolver: zodResolver(z.object({
+      name: z.string().min(2, "Name must be at least 2 characters"),
+      email: z.string().email("Invalid email format"),
+      familyId: z.number().nullable(),
+    })),
+    defaultValues: {
+      name: '',
+      email: '',
+      familyId: null,
+    },
+  });
+
+  // Update when selected user changes
+  useEffect(() => {
+    if (selectedUserForEdit) {
+      editUserForm.reset({
+        name: selectedUserForEdit.name,
+        email: selectedUserForEdit.email,
+        familyId: selectedUserForEdit.familyId,
+      });
+    }
+  }, [selectedUserForEdit, editUserForm]);
+
+  // Handle editing user
+  const handleEditUser = (user: any) => {
+    setSelectedUserForEdit(user);
+    setEditUserDialogOpen(true);
+  };
+
+  // Edit user mutation
+  const editUserMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const userId = selectedUserForEdit.id;
+      const res = await apiRequest('PATCH', `/api/users/${userId}`, data);
+      const userData = await res.json();
+      return userData;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+      toast({
+        title: 'User updated successfully',
+        description: 'The user information has been updated.',
+      });
+      setEditUserDialogOpen(false);
+      setSelectedUserForEdit(null);
+    },
+    onError: (error) => {
+      toast({
+        title: 'Failed to update user',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Users table columns
   const usersTableColumns = [
     {
@@ -231,6 +292,18 @@ export default function AdminUsers() {
       header: 'Actions',
       accessor: (user: any) => (
         <div className="flex justify-end space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEditUser(user);
+            }}
+          >
+            <UserCog className="h-4 w-4 mr-2" />
+            Edit
+          </Button>
+          
           {!user.isAdmin && (
             <Button
               variant="outline"
@@ -241,7 +314,7 @@ export default function AdminUsers() {
               }}
             >
               <Shield className="h-4 w-4 mr-2" />
-              Promote to Admin
+              Promote
             </Button>
           )}
         </div>
@@ -494,6 +567,108 @@ export default function AdminUsers() {
                     </>
                   ) : (
                     'Create User'
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Edit User Dialog */}
+      <Dialog open={editUserDialogOpen} onOpenChange={setEditUserDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserCog className="h-5 w-5" />
+              Edit User
+            </DialogTitle>
+            <DialogDescription>
+              {selectedUserForEdit && (
+                <>Update information for {selectedUserForEdit.name}</>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...editUserForm}>
+            <form onSubmit={editUserForm.handleSubmit((data) => {
+              editUserMutation.mutate(data);
+            })} className="space-y-4">
+              
+              <FormField
+                control={editUserForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Enter full name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={editUserForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="email" placeholder="Enter email address" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              {families && families.length > 0 && (
+                <FormField
+                  control={editUserForm.control}
+                  name="familyId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Family</FormLabel>
+                      <Select
+                        value={field.value?.toString() || "none"}
+                        onValueChange={(value) => field.onChange(value && value !== "none" ? parseInt(value) : null)}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a family (optional)" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">No family</SelectItem>
+                          {families.map((family: any) => (
+                            <SelectItem key={family.id} value={family.id.toString()}>
+                              {family.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Assign this user to a family
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              
+              <DialogFooter>
+                <Button 
+                  type="submit" 
+                  disabled={editUserMutation.isPending}
+                >
+                  {editUserMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    'Update User'
                   )}
                 </Button>
               </DialogFooter>

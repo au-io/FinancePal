@@ -113,6 +113,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(usersWithoutPasswords);
   });
   
+  // Update a user
+  app.patch("/api/users/:userId", requireAdmin, async (req, res, next) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      
+      // Get the current user
+      const currentUser = await storage.getUser(userId);
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Update the user
+      const updatedUser = await storage.updateUser(userId, req.body);
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Don't return the password
+      const { password, ...userWithoutPassword } = updatedUser;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      next(error);
+    }
+  });
+  
   app.post("/api/users/:userId/promote", requireAdmin, async (req, res) => {
     const userId = parseInt(req.params.userId);
     const updatedUser = await storage.promoteUserToAdmin(userId);
