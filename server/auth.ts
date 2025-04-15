@@ -81,26 +81,47 @@ export async function setupAuth(app: Express) {
 
   app.post("/api/register", async (req, res, next) => {
     try {
-      const userData = req.body as RegisterData;
+      console.log('Registration request body:', req.body);
+      // Skip confirmPassword validation for admin-created users
+      // or handle userData as basic InsertUser type
+      const userData = req.body;
       
       const existingUser = await storage.getUserByUsername(userData.username);
       if (existingUser) {
         return res.status(400).json({ message: "Username already exists" });
       }
 
-      const user = await storage.createUser({
-        ...userData,
+      // Extract only the fields needed for user creation
+      const userToCreate = {
+        username: userData.username,
         password: await hashPassword(userData.password),
-      });
+        name: userData.name,
+        email: userData.email,
+        isAdmin: userData.isAdmin || false,
+        familyId: userData.familyId || null
+      };
 
-      req.login(user, (err) => {
-        if (err) return next(err);
-        
-        // Don't return the password in the response
+      console.log('Creating user with data:', { ...userToCreate, password: '[REDACTED]' });
+      const user = await storage.createUser(userToCreate);
+      console.log('User created:', { id: user.id, username: user.username });
+
+      // Only log in the user if this is a self-registration (not admin creating a user)
+      if (req.isAuthenticated() && (req.user as SelectUser).isAdmin) {
+        // Admin creating a user - don't log in as the new user
         const { password, ...userWithoutPassword } = user;
-        res.status(201).json(userWithoutPassword);
-      });
+        return res.status(201).json(userWithoutPassword);
+      } else {
+        // Self-registration - log in as the new user
+        req.login(user, (err) => {
+          if (err) return next(err);
+          
+          // Don't return the password in the response
+          const { password, ...userWithoutPassword } = user;
+          res.status(201).json(userWithoutPassword);
+        });
+      }
     } catch (error) {
+      console.error('Error in registration:', error);
       next(error);
     }
   });

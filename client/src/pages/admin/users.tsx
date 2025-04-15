@@ -70,6 +70,7 @@ const addUserSchema = z.object({
   isAdmin: z.boolean().default(false),
   familyId: z.number().nullable().default(null),
   generatePassword: z.boolean().default(true),
+  // No confirmPassword required for admin-created users
 });
 
 type AddUserFormData = z.infer<typeof addUserSchema>;
@@ -109,10 +110,20 @@ export default function AdminUsers() {
   // Add user mutation
   const addUserMutation = useMutation({
     mutationFn: async (userData: AddUserFormData) => {
-      const res = await apiRequest('POST', '/api/register', userData);
-      return await res.json();
+      console.log('Submitting user data:', userData);
+      try {
+        const res = await apiRequest('POST', '/api/register', userData);
+        console.log('Registration response:', res);
+        const data = await res.json();
+        console.log('Registration data:', data);
+        return data;
+      } catch (error) {
+        console.error('Registration error:', error);
+        throw error;
+      }
     },
     onSuccess: (data) => {
+      console.log('User created successfully:', data);
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
       toast({
         title: 'User created successfully',
@@ -125,6 +136,7 @@ export default function AdminUsers() {
       addUserForm.reset();
     },
     onError: (error) => {
+      console.error('Mutation error:', error);
       toast({
         title: 'Failed to create user',
         description: error.message,
