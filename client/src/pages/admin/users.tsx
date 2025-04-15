@@ -444,8 +444,8 @@ export default function AdminUsers() {
                     <FormItem>
                       <FormLabel>Family</FormLabel>
                       <Select
-                        value={field.value?.toString() || ""}
-                        onValueChange={(value) => field.onChange(value ? parseInt(value) : null)}
+                        value={field.value?.toString() || "none"}
+                        onValueChange={(value) => field.onChange(value && value !== "none" ? parseInt(value) : null)}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -453,7 +453,7 @@ export default function AdminUsers() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">No family</SelectItem>
+                          <SelectItem value="none">No family</SelectItem>
                           {families.map((family: any) => (
                             <SelectItem key={family.id} value={family.id.toString()}>
                               {family.name}
