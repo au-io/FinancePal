@@ -167,7 +167,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/accounts", requireAuth, async (req, res) => {
     const userId = req.user!.id;
-    const accounts = await storage.getAccountsByUserId(userId);
+    let accounts = await storage.getAccountsByUserId(userId);
+    
+    // If user is part of a family, also get family members' accounts
+    if (req.user && req.user.familyId) {
+      const familyMembers = await storage.getUsersByFamilyId(req.user.familyId);
+      
+      // Get accounts for each family member
+      const familyMemberPromises = familyMembers
+        .filter(member => member.id !== userId) // Exclude current user
+        .map(member => storage.getAccountsByUserId(member.id));
+      
+      const familyMemberAccounts = await Promise.all(familyMemberPromises);
+      
+      // Flatten the array of arrays
+      const otherFamilyAccounts = familyMemberAccounts.flat();
+      
+      // Combine with user's own accounts
+      accounts = [...accounts, ...otherFamilyAccounts];
+    }
+    
     res.json(accounts);
   });
   
@@ -179,8 +198,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).json({ message: "Account not found" });
     }
     
-    // Only allow users to access their own accounts
-    if (account.userId !== req.user!.id && !req.user!.isAdmin) {
+    // Allow if account belongs to the user directly
+    const isSameUser = account.userId === req.user!.id;
+    
+    // Or allow if both users are in the same family (family account sharing)
+    let isSameFamily = false;
+    if (req.user && req.user.familyId) {
+      const accountOwner = await storage.getUser(account.userId);
+      isSameFamily = Boolean(accountOwner && accountOwner.familyId === req.user.familyId && accountOwner.familyId !== null);
+    }
+    
+    // Admin can access any account
+    const isAdmin = req.user!.isAdmin;
+    
+    if (!isSameUser && !isSameFamily && !isAdmin) {
       return res.status(403).json({ message: "You don't have permission to access this account" });
     }
     
@@ -246,13 +277,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Check if source account exists and belongs to user
+      // Check if source account exists and belongs to user or family
       const sourceAccount = await storage.getAccount(parsedData.sourceAccountId);
       if (!sourceAccount) {
         return res.status(404).json({ message: "Source account not found" });
       }
       
-      if (sourceAccount.userId !== userId) {
+      // Allow if account belongs to the user directly
+      const isSameUser = sourceAccount.userId === userId;
+      
+      // Or allow if both users are in the same family (family account sharing)
+      let isSameFamily = false;
+      if (req.user && req.user.familyId) {
+        const accountOwner = await storage.getUser(sourceAccount.userId);
+        isSameFamily = Boolean(accountOwner && accountOwner.familyId === req.user.familyId && accountOwner.familyId !== null);
+      }
+      
+      if (!isSameUser && !isSameFamily) {
         return res.status(403).json({ 
           message: "You don't have permission to use this source account" 
         });
@@ -287,9 +328,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     let transactions;
     
     if (accountId) {
-      // Check if account belongs to user
+      // Check if account belongs to user or family
       const account = await storage.getAccount(accountId);
-      if (!account || account.userId !== userId) {
+      
+      if (!account) {
+        return res.status(404).json({ message: "Account not found" });
+      }
+      
+      // Allow if account belongs to the user directly
+      const isSameUser = account.userId === userId;
+      
+      // Or allow if both users are in the same family (family account sharing)
+      let isSameFamily = false;
+      if (req.user && req.user.familyId) {
+        const accountOwner = await storage.getUser(account.userId);
+        isSameFamily = Boolean(accountOwner && accountOwner.familyId === req.user.familyId && accountOwner.familyId !== null);
+      }
+      
+      if (!isSameUser && !isSameFamily) {
         return res.status(403).json({ 
           message: "You don't have permission to access this account's transactions" 
         });
@@ -297,7 +353,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       transactions = await storage.getTransactionsByAccountId(accountId);
     } else {
-      transactions = await storage.getTransactionsByUserId(userId);
+      // If user is part of a family, get all family transactions
+      if (req.user && req.user.familyId) {
+        transactions = await storage.getTransactionsByFamilyId(req.user.familyId);
+      } else {
+        // Otherwise just get the user's transactions
+        transactions = await storage.getTransactionsByUserId(userId);
+      }
     }
     
     res.json(transactions);
@@ -311,8 +373,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).json({ message: "Transaction not found" });
     }
     
-    // Only allow users to access their own transactions
-    if (transaction.userId !== req.user!.id) {
+    // Check if transaction belongs to user or family
+    const isSameUser = transaction.userId === req.user!.id;
+    
+    // Or allow if both users are in the same family (family transaction sharing)
+    let isSameFamily = false;
+    if (req.user && req.user.familyId) {
+      const transactionOwner = await storage.getUser(transaction.userId);
+      isSameFamily = Boolean(transactionOwner && transactionOwner.familyId === req.user.familyId && transactionOwner.familyId !== null);
+    }
+    
+    if (!isSameUser && !isSameFamily) {
       return res.status(403).json({ 
         message: "You don't have permission to access this transaction" 
       });
@@ -330,8 +401,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Transaction not found" });
       }
       
-      // Only allow users to update their own transactions
-      if (transaction.userId !== req.user!.id) {
+      // Check if transaction belongs to user or family
+      const isSameUser = transaction.userId === req.user!.id;
+      
+      // Or allow if both users are in the same family (family transaction sharing)
+      let isSameFamily = false;
+      if (req.user && req.user.familyId) {
+        const transactionOwner = await storage.getUser(transaction.userId);
+        isSameFamily = Boolean(transactionOwner && transactionOwner.familyId === req.user.familyId && transactionOwner.familyId !== null);
+      }
+      
+      if (!isSameUser && !isSameFamily) {
         return res.status(403).json({ 
           message: "You don't have permission to update this transaction" 
         });
@@ -358,8 +438,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).json({ message: "Transaction not found" });
     }
     
-    // Only allow users to delete their own transactions
-    if (transaction.userId !== req.user!.id) {
+    // Check if transaction belongs to user or family
+    const isSameUser = transaction.userId === req.user!.id;
+    
+    // Or allow if both users are in the same family (family transaction sharing)
+    let isSameFamily = false;
+    if (req.user && req.user.familyId) {
+      const transactionOwner = await storage.getUser(transaction.userId);
+      isSameFamily = Boolean(transactionOwner && transactionOwner.familyId === req.user.familyId && transactionOwner.familyId !== null);
+    }
+    
+    if (!isSameUser && !isSameFamily) {
       return res.status(403).json({ 
         message: "You don't have permission to delete this transaction" 
       });
