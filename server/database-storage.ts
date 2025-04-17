@@ -6,7 +6,7 @@ import {
 } from "@shared/schema";
 import { IStorage } from "./storage";
 import { db, pool } from "./db";
-import { eq, and, isNull, desc } from "drizzle-orm";
+import { eq, and, isNull, desc, sql } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 
@@ -30,8 +30,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user;
+    // First try exact match
+    const [exactMatch] = await db.select()
+      .from(users)
+      .where(eq(users.username, username))
+      .limit(1);
+    
+    if (exactMatch) {
+      return exactMatch;
+    }
+    
+    // If no exact match, get all users and do a case-insensitive compare in JS
+    // This is not as efficient but more portable than SQL-specific solutions
+    const allUsers = await db.select().from(users);
+    
+    const caseInsensitiveMatch = allUsers.find(
+      user => user.username.toLowerCase() === username.toLowerCase()
+    );
+    
+    return caseInsensitiveMatch;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
