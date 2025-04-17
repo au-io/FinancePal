@@ -63,6 +63,7 @@ export async function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
+        // getUserByUsername now handles case-insensitive matching
         const user = await storage.getUserByUsername(username);
         if (!user || !(await comparePasswords(password, user.password))) {
           return done(null, false, { message: "Invalid username or password" });
@@ -105,9 +106,10 @@ export async function setupAuth(app: Express) {
         return res.status(400).json({ message: "Invalid user data", error });
       }
       
+      // Username check now uses case-insensitive matching
       const existingUser = await storage.getUserByUsername(userData.username);
       if (existingUser) {
-        return res.status(400).json({ message: "Username already exists" });
+        return res.status(400).json({ message: "Username already exists (case-insensitive)" });
       }
 
       // Create the user
@@ -147,9 +149,10 @@ export async function setupAuth(app: Express) {
         return res.status(400).json({ message: "Invalid registration data", error });
       }
       
+      // Username check now uses case-insensitive matching
       const existingUser = await storage.getUserByUsername(userData.username);
       if (existingUser) {
-        return res.status(400).json({ message: "Username already exists" });
+        return res.status(400).json({ message: "Username already exists (case-insensitive)" });
       }
 
       // Extract only the fields needed for user creation and exclude confirmPassword
