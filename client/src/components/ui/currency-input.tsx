@@ -39,9 +39,25 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     // Use provided symbol or the one from context (default to £ for GBP if neither available)
     const symbolToUse = currencySymbol || contextCurrencySymbol || '£';
     
-    // State to hold unformatted input value
+    // State to hold unformatted input value and cursor position
     const [rawInput, setRawInput] = useState<string>('');
     const [isFocused, setIsFocused] = useState<boolean>(false);
+    const [cursorPosition, setCursorPosition] = useState<number | null>(null);
+
+    // Apply cursor position after render
+    useEffect(() => {
+      if (isFocused && innerRef.current && cursorPosition !== null) {
+        innerRef.current.setSelectionRange(cursorPosition, cursorPosition);
+      }
+    }, [isFocused, rawInput, cursorPosition]);
+
+    // Initialize rawInput when the component receives a value
+    useEffect(() => {
+      if (!isFocused && value !== undefined) {
+        const numValue = typeof value === 'string' ? parseFloat(value) || 0 : value;
+        setRawInput(numValue.toString());
+      }
+    }, [value, isFocused]);
 
     // Format value for display
     const formatValue = (val: number | string): string => {
@@ -58,6 +74,7 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
     // Parse input value
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const inputValue = e.target.value;
+      const currentCursorPosition = e.target.selectionStart;
       
       // Store raw input
       setRawInput(inputValue);
@@ -84,16 +101,31 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
       } else {
         onChange(parseFloat(sanitizedValue));
       }
+      
+      // Save cursor position for restoration after re-render
+      setCursorPosition(currentCursorPosition);
     };
     
-    // Handle focus and blur events
-    const handleFocus = () => {
+    // Handle focus event
+    const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
       setIsFocused(true);
+      
+      // Convert formatted value to raw number when focusing
+      const numValue = typeof value === 'string' ? parseFloat(value) || 0 : value;
+      setRawInput(numValue.toString());
+      
+      // Position cursor at the beginning when initially focusing
+      setTimeout(() => {
+        if (innerRef.current) {
+          innerRef.current.setSelectionRange(0, 0);
+        }
+      }, 0);
     };
     
+    // Handle blur event
     const handleBlur = () => {
       setIsFocused(false);
-      setRawInput('');
+      // No longer clear rawInput on blur to maintain state
     };
 
     return (

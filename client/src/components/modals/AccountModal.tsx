@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { useCurrency } from '@/hooks/use-currency';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -53,6 +54,8 @@ export function AccountModal({
   isSubmitting = false
 }: AccountModalProps) {
   const isEditing = !!editingAccount;
+  // Get the current currency context
+  const { currencySymbol } = useCurrency();
 
   // Set up form with initial values
   const form = useForm<z.infer<typeof formSchema>>({
@@ -156,8 +159,9 @@ export function AccountModal({
                   <FormLabel>Initial Balance</FormLabel>
                   <FormControl>
                     <CurrencyInput
-                      value={field.value}
+                      value={field.value || 0}
                       onChange={field.onChange}
+                      currencySymbol={currencySymbol}
                     />
                   </FormControl>
                   <FormMessage />
