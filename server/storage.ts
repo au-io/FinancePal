@@ -46,7 +46,7 @@ export interface IStorage {
   deleteTransaction(id: number): Promise<boolean>;
   
   // Session store for auth
-  sessionStore: session.SessionStore;
+  sessionStore: session.Store;
 
   // For initial admin creation
   createInitialAdmin(): Promise<User | undefined>;
@@ -61,7 +61,7 @@ export class MemStorage implements IStorage {
   private familyCurrentId: number;
   private accountCurrentId: number;
   private transactionCurrentId: number;
-  public sessionStore: session.SessionStore;
+  public sessionStore: session.Store;
 
   constructor() {
     this.users = new Map();
@@ -326,4 +326,8 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Import the database storage implementation
+import { DatabaseStorage } from "./database-storage";
+
+// Use DatabaseStorage instead of MemStorage for persistence
+export const storage = new DatabaseStorage();

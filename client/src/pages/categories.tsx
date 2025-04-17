@@ -14,9 +14,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { PlusCircle, Trash } from 'lucide-react';
+import { PlusCircle, Trash, ArrowLeft } from 'lucide-react';
 import { transactionCategories } from '@shared/schema';
 import { useCategories } from '@/hooks/use-categories';
+import { Link } from 'wouter';
 
 export default function Categories() {
   const { toast } = useToast();
@@ -73,7 +74,14 @@ export default function Categories() {
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Transaction Categories</h1>
+        <div className="flex items-center gap-4">
+          <Link href="/">
+            <Button variant="outline" size="icon">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <h1 className="text-3xl font-bold">Transaction Categories</h1>
+        </div>
       </div>
       
       <Card>
