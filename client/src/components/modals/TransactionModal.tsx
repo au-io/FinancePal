@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { CurrencyInput } from '@/components/ui/currency-input';
+import { useCurrency } from '@/hooks/use-currency';
 import {
   Form,
   FormControl,
@@ -79,6 +80,8 @@ export function TransactionModal({
 }: TransactionModalProps) {
   const isEditing = !!editingTransaction;
   const { customCategories, addCategory } = useCategories();
+  // Get the current currency context
+  const { currencySymbol } = useCurrency();
   const [showRecurringOptions, setShowRecurringOptions] = useState(false);
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
   const [newCategory, setNewCategory] = useState('');
@@ -298,8 +301,9 @@ export function TransactionModal({
                   <FormLabel>Amount</FormLabel>
                   <FormControl>
                     <CurrencyInput
-                      value={field.value}
+                      value={field.value || 0}
                       onChange={field.onChange}
+                      currencySymbol={currencySymbol}
                     />
                   </FormControl>
                   <FormMessage />
