@@ -16,7 +16,8 @@ import {
   UserCog,
   Menu,
   LogOut,
-  Repeat
+  Repeat,
+  X
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -87,12 +88,15 @@ export function Sidebar() {
 
   const SidebarLink = ({ href, label, icon }: { href: string; label: string; icon: React.ReactNode }) => (
     <Link href={href}>
-      <a className={cn(
-        "flex items-center px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors",
-        location === href 
-          ? "bg-primary bg-opacity-10 border-l-2 border-primary text-primary font-medium" 
-          : "text-gray-700"
-      )}>
+      <a 
+        className={cn(
+          "flex items-center px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors",
+          location === href 
+            ? "bg-primary bg-opacity-10 border-l-2 border-primary text-primary font-medium" 
+            : "text-gray-700"
+        )}
+        onClick={() => setMobileMenuOpen(false)}
+      >
         {icon}
         <span>{label}</span>
       </a>
@@ -102,13 +106,14 @@ export function Sidebar() {
   return (
     <>
       {/* Mobile Header */}
-      <div className="md:hidden flex justify-between items-center p-4 bg-white border-b">
+      <div className="md:hidden flex justify-between items-center p-4 bg-white border-b sticky top-0 z-40">
         <LogoWithText size="small" textSize="lg" />
         <Button
           variant="ghost"
           size="icon"
           onClick={toggleMobileMenu}
           aria-label="Toggle menu"
+          className="relative z-50"
         >
           <Menu className="h-6 w-6" />
         </Button>
@@ -116,13 +121,26 @@ export function Sidebar() {
       
       {/* Sidebar */}
       <aside className={cn(
-        "bg-white w-64 shadow-lg z-50 transition-all",
-        "md:flex md:flex-col md:min-h-screen md:sticky md:top-0",
+        "bg-white shadow-lg z-50 transition-all overflow-y-auto",
+        "md:w-64 md:flex md:flex-col md:min-h-screen md:sticky md:top-0",
         mobileMenuOpen 
-          ? "fixed inset-0 flex flex-col" 
+          ? "fixed inset-0 flex flex-col w-full sm:w-80" 
           : "hidden md:flex"
       )}>
         <div className="p-4 md:p-6 flex flex-col h-full">
+          {/* Mobile sidebar header */}
+          <div className="md:hidden flex items-center justify-between mb-4">
+            <LogoWithText size="small" textSize="lg" />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMobileMenuOpen(false)}
+              aria-label="Close menu"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+          
           {/* Logo */}
           <div className="hidden md:block mb-8">
             <LogoWithText size="medium" withSubtitle={true} />
