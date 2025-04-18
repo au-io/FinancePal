@@ -10,11 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { apiRequest, parseCSV } from '@/lib/queryClient';
+import { apiRequest, parseCSV, downloadFileFromApi } from '@/lib/queryClient';
 import { Account } from '@shared/schema';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, AlertTriangle, FileText, Upload } from 'lucide-react';
+import { Loader2, AlertTriangle, FileText, Upload, Download, ArrowRight } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface ImportTransactionsModalProps {
   isOpen: boolean;
@@ -214,6 +215,67 @@ export function ImportTransactionsModal({
               <p className="text-xs text-gray-500">
                 For Transfer transactions, add the 'DestinationAccount' column with the exact account name.
               </p>
+              
+              <div className="pt-2">
+                <p className="text-xs font-medium text-gray-700 mb-1">Download Template:</p>
+                <div className="flex gap-2">
+                  <Button 
+                    type="button" 
+                    size="sm" 
+                    variant="outline"
+                    className="text-xs h-8"
+                    onClick={async () => {
+                      try {
+                        await downloadFileFromApi(
+                          '/api/templates/regular-transactions',
+                          'regular-transactions-template.csv'
+                        );
+                        toast({
+                          title: 'Template downloaded',
+                          description: 'Regular transactions template downloaded successfully.'
+                        });
+                      } catch (error) {
+                        toast({
+                          title: 'Download failed',
+                          description: error instanceof Error ? error.message : 'Failed to download template',
+                          variant: 'destructive',
+                        });
+                      }
+                    }}
+                  >
+                    <Download className="h-3 w-3 mr-1" />
+                    Regular
+                  </Button>
+                  
+                  <Button 
+                    type="button" 
+                    size="sm" 
+                    variant="outline"
+                    className="text-xs h-8"
+                    onClick={async () => {
+                      try {
+                        await downloadFileFromApi(
+                          '/api/templates/transfer-transactions',
+                          'transfer-transactions-template.csv'
+                        );
+                        toast({
+                          title: 'Template downloaded',
+                          description: 'Transfer transactions template downloaded successfully.'
+                        });
+                      } catch (error) {
+                        toast({
+                          title: 'Download failed',
+                          description: error instanceof Error ? error.message : 'Failed to download template',
+                          variant: 'destructive',
+                        });
+                      }
+                    }}
+                  >
+                    <Download className="h-3 w-3 mr-1" />
+                    Transfer
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
           

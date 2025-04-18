@@ -550,6 +550,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(familyTransactions);
   });
   
+  // CSV Templates
+  app.get("/api/templates/regular-transactions", requireAuth, (req, res) => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    const csvHeader = "Date,Type,Category,Description,Amount\n";
+    const csvRows = [
+      `${today},Income,Salary,"Monthly Salary",1500`,
+      `${today},Expense,Groceries,"Weekly groceries",-75.50`,
+      `${today},Expense,Utilities,"Electricity bill",-120`
+    ];
+    
+    const csvContent = csvHeader + csvRows.join("\n");
+    
+    // Set headers for file download
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=regular-transactions-template.csv');
+    
+    res.send(csvContent);
+  });
+  
+  app.get("/api/templates/transfer-transactions", requireAuth, async (req, res) => {
+    const userId = req.user!.id;
+    const accounts = await storage.getAccountsByUserId(userId);
+    
+    // If user has fewer than 2 accounts, provide generic account names
+    const sourceAccountName = accounts.length > 0 ? accounts[0].name : "Checking Account";
+    const destAccountName = accounts.length > 1 ? accounts[1].name : "Savings Account";
+    
+    const today = new Date().toISOString().split('T')[0];
+    
+    const csvHeader = "Date,Type,Category,Description,Amount,DestinationAccount\n";
+    const csvRows = [
+      `${today},Transfer,Transfer,"Transfer to savings",100,"${destAccountName}"`,
+      `${today},Transfer,Transfer,"Emergency fund transfer",50,"${destAccountName}"`,
+      `${today},Transfer,Transfer,"Monthly savings",200,"${destAccountName}"`
+    ];
+    
+    const csvContent = csvHeader + csvRows.join("\n");
+    
+    // Set headers for file download
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=transfer-transactions-template.csv');
+    
+    res.send(csvContent);
+  });
+
   // CSV Export
   app.get("/api/export/transactions", requireAuth, async (req, res) => {
     const userId = req.user!.id;
@@ -568,13 +614,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
     
-    // Convert to CSV format
-    const csvHeader = "Id,Date,Type,Category,Description,Amount,Account\n";
+    // Build CSV header based on transaction types
+    let csvHeader = "Date,Type,Category,Description,Amount";
+    
+    // Add destination account column if there are any transfer transactions
+    const hasTransfers = transactions.some(tx => tx.type === "Transfer");
+    if (hasTransfers) {
+      csvHeader += ",DestinationAccount";
+    }
+    csvHeader += "\n";
+    
     const csvRows = await Promise.all(transactions.map(async tx => {
-      const account = await storage.getAccount(tx.sourceAccountId);
-      const accountName = account ? account.name : "Unknown Account";
+      const sourceAccount = await storage.getAccount(tx.sourceAccountId);
+      const sourceAccountName = sourceAccount ? sourceAccount.name : "Unknown Account";
       
-      return `${tx.id},${new Date(tx.date).toISOString()},${tx.type},${tx.category},"${tx.description || ''}",${tx.amount},"${accountName}"`;
+      let row = `${new Date(tx.date).toISOString().split('T')[0]},${tx.type},${tx.category},"${tx.description || ''}",${tx.amount}`;
+      
+      // Add destination account for transfers
+      if (hasTransfers) {
+        if (tx.type === "Transfer" && tx.destinationAccountId) {
+          const destAccount = await storage.getAccount(tx.destinationAccountId);
+          const destAccountName = destAccount ? destAccount.name : "";
+          row += `,"${destAccountName}"`;
+        } else {
+          row += ",";
+        }
+      }
+      
+      return row;
     }));
     
     const csvContent = csvHeader + csvRows.join("\n");
