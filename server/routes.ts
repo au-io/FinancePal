@@ -605,9 +605,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Category operations
+  app.post("/api/categories", requireAuth, async (req, res, next) => {
+    try {
+      const { name } = req.body;
+      
+      if (!name || typeof name !== 'string' || !name.trim()) {
+        return res.status(400).json({ message: "Category name is required" });
+      }
+      
+      // Get the current user
+      const user = await storage.getUser(req.user!.id);
+      
+      // Check if the category already exists in custom categories
+      if (user && user.customCategories && Array.isArray(user.customCategories)) {
+        if (user.customCategories.includes(name.trim())) {
+          return res.status(409).json({ message: "Category already exists" });
+        }
+        
+        // Add the category to user's custom categories
+        const updatedCategories = [...user.customCategories, name.trim()];
+        await storage.updateUser(user.id, { customCategories: updatedCategories });
+        
+        return res.status(201).json({ 
+          success: true,
+          category: name.trim(),
+          message: "Category added successfully"
+        });
+      } else {
+        // Initialize custom categories array if it doesn't exist
+        await storage.updateUser(req.user!.id, { customCategories: [name.trim()] });
+        
+        return res.status(201).json({ 
+          success: true,
+          category: name.trim(),
+          message: "Category added successfully"
+        });
+      }
+    } catch (error) {
+      next(error);
+    }
+  });
+  
   app.get("/api/categories/:category/count", requireAuth, async (req, res, next) => {
     try {
-      const category = req.params.category;
+      // Decode the category name to handle spaces and special characters
+      const category = decodeURIComponent(req.params.category);
       let count = 0;
       
       // Get user's transactions first

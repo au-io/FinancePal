@@ -43,7 +43,9 @@ export function BulkCategoryUpdate({ categories }: BulkCategoryUpdateProps) {
     setIsCheckingCount(true);
     
     try {
-      const response = await fetch(`/api/categories/${sourceCategory}/count`, {
+      // Encode the category name to handle spaces and special characters
+      const encodedCategory = encodeURIComponent(sourceCategory);
+      const response = await fetch(`/api/categories/${encodedCategory}/count`, {
         credentials: 'include'
       });
       
@@ -88,6 +90,24 @@ export function BulkCategoryUpdate({ categories }: BulkCategoryUpdateProps) {
     try {
       // Use either the selected category or the new custom category
       const finalTargetCategory = targetCategory || newCustomCategory.trim();
+      
+      // Add custom category to categories list if needed
+      if (newCustomCategory.trim() && !categories.includes(newCustomCategory.trim())) {
+        try {
+          // Add the new category locally first
+          await fetch('/api/categories', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ name: newCustomCategory.trim() }),
+            credentials: 'include'
+          });
+        } catch (error) {
+          console.error('Error adding new category:', error);
+          // Continue anyway since the category will be used in transactions
+        }
+      }
       
       const response = await fetch('/api/categories/update-transactions', {
         method: 'POST',
