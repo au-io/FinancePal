@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { TransactionCalendar } from '@/components/dashboard/TransactionCalendar';
 import { CashFlowForecast } from '@/components/dashboard/CashFlowForecast';
 import { CurrentMonthDailyTransactions } from '@/components/dashboard/CurrentMonthDailyTransactions';
+import { ExpensesByUser } from '@/components/dashboard/ExpensesByUser';
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -31,6 +32,11 @@ export default function Dashboard() {
   // Fetch transactions
   const { data: transactions, isLoading: isLoadingTransactions } = useQuery({
     queryKey: isPersonalView ? ['/api/transactions'] : ['/api/family/transactions'],
+  });
+  
+  // Fetch family members for user mapping in the ExpensesByUser chart
+  const { data: familyMembers, isLoading: isLoadingFamilyMembers } = useQuery({
+    queryKey: ['/api/family/members'],
   });
 
   // Calculate summary statistics
@@ -108,7 +114,7 @@ export default function Dashboard() {
     setIsTransactionModalOpen(true);
   };
 
-  const isLoading = isLoadingAccounts || isLoadingTransactions;
+  const isLoading = isLoadingAccounts || isLoadingTransactions || isLoadingFamilyMembers;
 
   return (
     <MainLayout>
@@ -169,6 +175,14 @@ export default function Dashboard() {
           <div className="mb-6">
             <CurrentMonthDailyTransactions
               transactions={transactions || []}
+              isLoading={isLoading}
+            />
+          </div>
+          
+          <div className="mb-6">
+            <ExpensesByUser
+              transactions={transactions || []}
+              familyMembers={familyMembers || []}
               isLoading={isLoading}
             />
           </div>
