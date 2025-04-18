@@ -88,20 +88,21 @@ export function Sidebar() {
   ];
 
   const SidebarLink = ({ href, label, icon }: { href: string; label: string; icon: React.ReactNode }) => (
-    <Link href={href}>
-      <a 
-        className={cn(
-          "flex items-center px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors",
-          location === href 
-            ? "bg-primary bg-opacity-10 border-l-2 border-primary text-primary font-medium" 
-            : "text-gray-700"
-        )}
-        onClick={() => setMobileMenuOpen(false)}
-      >
-        {icon}
-        <span>{label}</span>
-      </a>
-    </Link>
+    <div onClick={() => setMobileMenuOpen(false)}>
+      <Link href={href}>
+        <div 
+          className={cn(
+            "flex items-center px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer",
+            location === href 
+              ? "border-l-2 border-primary bg-primary/5 text-primary font-medium" 
+              : "text-gray-700"
+          )}
+        >
+          {icon}
+          <span>{label}</span>
+        </div>
+      </Link>
+    </div>
   );
 
   return (
