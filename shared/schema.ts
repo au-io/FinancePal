@@ -97,20 +97,28 @@ export const transactions = pgTable("transactions", {
   frequencyCustomDays: integer("frequency_custom_days"),
 });
 
-export const insertTransactionSchema = createInsertSchema(transactions).pick({
-  sourceAccountId: true,
-  destinationAccountId: true,
-  userId: true,
-  amount: true,
-  type: true,
-  category: true,
-  description: true,
-  date: true,
-  isRecurring: true,
-  frequency: true,
-  frequencyDay: true,
-  frequencyCustomDays: true,
-});
+export const insertTransactionSchema = createInsertSchema(transactions)
+  .pick({
+    sourceAccountId: true,
+    destinationAccountId: true,
+    userId: true,
+    amount: true,
+    type: true,
+    category: true,
+    description: true,
+    date: true,
+    isRecurring: true,
+    frequency: true,
+    frequencyDay: true,
+    frequencyCustomDays: true,
+  })
+  .extend({
+    // Enforce that type must be one of the defined transaction types
+    type: z.enum(transactionTypes, {
+      required_error: "Transaction type is required",
+      invalid_type_error: "Transaction type must be Income, Expense, or Transfer"
+    })
+  });
 
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type Transaction = typeof transactions.$inferSelect;

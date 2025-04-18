@@ -68,6 +68,11 @@ interface TransactionModalProps {
 const formSchema = insertTransactionSchema.extend({
   date: z.date(),
   isRecurring: z.boolean(),
+  // Enforce type to be one of the transaction types
+  type: z.enum(transactionTypes, {
+    required_error: "Transaction type is required",
+    invalid_type_error: "Transaction type must be Income, Expense, or Transfer"
+  }),
 });
 
 export function TransactionModal({ 

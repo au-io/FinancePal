@@ -270,6 +270,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate transaction data
       const parsedData = insertTransactionSchema.parse(transactionData);
       
+      // Additional validation: ensure transaction has a valid type
+      if (!transactionTypes.includes(parsedData.type as any)) {
+        return res.status(400).json({ 
+          message: "Transaction type must be Income, Expense, or Transfer" 
+        });
+      }
+      
       // If it's a transfer, ensure destination account is provided
       if (parsedData.type === "Transfer" && !parsedData.destinationAccountId) {
         return res.status(400).json({ 
@@ -421,6 +428,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedData = { ...req.body };
       if (updatedData.date && typeof updatedData.date === 'string') {
         updatedData.date = new Date(updatedData.date);
+      }
+      
+      // If type is being updated, validate it's one of the allowed types
+      if (updatedData.type && !transactionTypes.includes(updatedData.type as any)) {
+        return res.status(400).json({ 
+          message: "Transaction type must be Income, Expense, or Transfer" 
+        });
+      }
+      
+      // If changing to Transfer type, ensure destinationAccountId is provided
+      if (updatedData.type === "Transfer" && !updatedData.destinationAccountId && 
+          !transaction.destinationAccountId) {
+        return res.status(400).json({ 
+          message: "Destination account is required for transfers" 
+        });
       }
       
       const updatedTransaction = await storage.updateTransaction(transactionId, updatedData);
