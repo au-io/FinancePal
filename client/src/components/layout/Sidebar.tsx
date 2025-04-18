@@ -17,7 +17,8 @@ import {
   Menu,
   LogOut,
   Repeat,
-  X
+  X,
+  User
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -187,15 +188,31 @@ export function Sidebar() {
                   <p className="text-xs text-gray-500">{user.email}</p>
                 </div>
               </div>
-              <Button 
-                variant="outline" 
-                className="mt-4 w-full flex items-center justify-center text-red-600 border-red-200 hover:bg-red-50"
-                onClick={handleLogout}
-                disabled={logoutMutation.isPending}
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                <span>Sign Out</span>
-              </Button>
+              <div className="mt-3 flex flex-col space-y-2">
+                <Link href="/profile">
+                  <a 
+                    className={cn(
+                      "flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors",
+                      location === '/profile' 
+                        ? "bg-primary bg-opacity-10 border-l-2 border-primary text-primary font-medium" 
+                        : "text-gray-700"
+                    )}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <User className="h-4 w-4 mr-2" />
+                    <span>My Profile</span>
+                  </a>
+                </Link>
+                <Button 
+                  variant="outline" 
+                  className="w-full flex items-center justify-center text-red-600 border-red-200 hover:bg-red-50"
+                  onClick={handleLogout}
+                  disabled={logoutMutation.isPending}
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  <span>Sign Out</span>
+                </Button>
+              </div>
             </div>
           )}
         </div>
