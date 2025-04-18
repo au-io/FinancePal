@@ -9,6 +9,7 @@ import { SpendingAnalytics } from '@/components/analytics/SpendingAnalytics';
 import { SubscriptionAnalytics } from '@/components/analytics/SubscriptionAnalytics';
 import { TransactionCalendar } from '@/components/dashboard/TransactionCalendar';
 import { Loader2 } from 'lucide-react';
+import { ErrorBoundary } from '@/components/error-boundary';
 import {
   Select,
   SelectContent,
@@ -196,26 +197,53 @@ export default function Analytics() {
           
           {/* Analytics Components */}
           <div className="space-y-6">
-            <AccountBalanceTrend 
-              transactions={Array.isArray(transactions) ? transactions : []} 
-              accounts={Array.isArray(accounts) ? accounts : []} 
-              isPersonalView={isPersonalView}
-            />
+            <ErrorBoundary 
+              componentName="Account Balance Trend"
+              fallback={
+                <Card className="bg-white">
+                  <CardHeader>
+                    <CardTitle>Account Balance Trend</CardTitle>
+                    <CardDescription>
+                      Historical balance trend for your accounts
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[300px] flex items-center justify-center flex-col">
+                      <p className="text-amber-600 font-medium mb-2">Unable to display chart</p>
+                      <p className="text-gray-500 text-sm">We're having trouble generating this chart. Please try again later.</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              }
+            >
+              <AccountBalanceTrend 
+                transactions={Array.isArray(transactions) ? transactions : []} 
+                accounts={Array.isArray(accounts) ? accounts : []} 
+                isPersonalView={isPersonalView}
+              />
+            </ErrorBoundary>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <TransactionCalendar 
-                transactions={Array.isArray(transactions) ? transactions : []} 
-                isLoading={isLoading} 
-              />
-              <SubscriptionAnalytics 
-                transactions={Array.isArray(transactions) ? transactions : []} 
-              />
+              <ErrorBoundary componentName="Transaction Calendar">
+                <TransactionCalendar 
+                  transactions={Array.isArray(transactions) ? transactions : []} 
+                  isLoading={isLoading} 
+                />
+              </ErrorBoundary>
+              
+              <ErrorBoundary componentName="Recurring Expenses">
+                <SubscriptionAnalytics 
+                  transactions={Array.isArray(transactions) ? transactions : []} 
+                />
+              </ErrorBoundary>
             </div>
             
-            <SpendingAnalytics 
-              transactions={Array.isArray(transactions) ? transactions : []} 
-              timeframe={timeframe} 
-            />
+            <ErrorBoundary componentName="Spending Analytics">
+              <SpendingAnalytics 
+                transactions={Array.isArray(transactions) ? transactions : []} 
+                timeframe={timeframe} 
+              />
+            </ErrorBoundary>
           </div>
         </>
       )}

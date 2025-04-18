@@ -154,15 +154,18 @@ export function AccountBalanceTrend({ transactions, accounts, isPersonalView }: 
                   strokeWidth={2}
                   name="Total Balance"
                 />
-                {accounts.map((account, index) => (
-                  <Line
-                    key={account.id}
-                    type="monotone"
-                    dataKey={account.name}
-                    stroke={getLineColor(index)}
-                    name={account.name}
-                  />
-                ))}
+                {accounts && Array.isArray(accounts) && accounts.map((account, index) => {
+                  if (!account || !account.name) return null;
+                  return (
+                    <Line
+                      key={account.id}
+                      type="monotone"
+                      dataKey={account.name}
+                      stroke={getLineColor(index)}
+                      name={account.name}
+                    />
+                  );
+                })}
               </LineChart>
             </ResponsiveContainer>
           </div>
