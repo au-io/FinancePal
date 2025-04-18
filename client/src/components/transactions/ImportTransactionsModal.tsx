@@ -311,12 +311,6 @@ export function ImportTransactionsModal({
               }
             }
             
-            // Skip transfer transactions without destination accounts
-            const destKey = 'DestinationAccount' in row ? 'DestinationAccount' : 'destinationAccount';
-            if (type === 'Transfer' && !row[destKey]) {
-              throw new Error(`Transfer transaction requires a destination account.`);
-            }
-            
             // Validate and normalize category
             const categoryKey = 'Category' in row ? 'Category' : 'category';
             let category = row[categoryKey] ? row[categoryKey].trim() : 'Other';
@@ -329,9 +323,35 @@ export function ImportTransactionsModal({
             const descKey = 'Description' in row ? 'Description' : 'description';
             const description = row[descKey] ? row[descKey].trim() : '';
             
+            // Get destination account key
+            const destKey = 'DestinationAccount' in row ? 'DestinationAccount' : 'destinationAccount';
+            
+            // Skip transfer transactions without destination accounts
+            if (type === 'Transfer' && !row[destKey]) {
+              throw new Error(`Transfer transaction requires a destination account.`);
+            }
+            
+            // Default to the selected account ID
+            let transactionAccountId = parseInt(accountId);
+            
+            // For Income and Expense transactions, if DestinationAccount is specified, use that account
+            if (row[destKey] && type !== 'Transfer') {
+              const specifiedAccountName = row[destKey].trim();
+              const specifiedAccount = accounts.find(a => 
+                a.name.toLowerCase() === specifiedAccountName.toLowerCase()
+              );
+              
+              if (specifiedAccount) {
+                // For Income/Expense, override the account with the specified one
+                transactionAccountId = specifiedAccount.id;
+              } else {
+                throw new Error(`Account '${specifiedAccountName}' not found. Available accounts: ${accounts.map(a => a.name).join(', ')}`);
+              }
+            }
+            
             // Create base transaction object
             const transaction: any = {
-              sourceAccountId: parseInt(accountId),
+              sourceAccountId: transactionAccountId,
               amount: amount,
               type: type,
               category: category,
@@ -462,8 +482,12 @@ export function ImportTransactionsModal({
                 CSV should have columns: Date, Amount, Type, Category, Description
               </p>
               <p className="text-xs text-gray-500">
-                For Transfer transactions, add the 'DestinationAccount' column with the exact account name.
+                You can add a 'DestinationAccount' column with an exact account name to:
               </p>
+              <ul className="text-xs text-gray-500 list-disc pl-4 space-y-1">
+                <li>For Transfer transactions: Specify the receiving account (required)</li>
+                <li>For Income/Expense transactions: Override the selected account above</li>
+              </ul>
               
               <div className="pt-2">
                 <p className="text-xs font-medium text-gray-700 mb-1">Download Template:</p>
