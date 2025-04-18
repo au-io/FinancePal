@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Transaction, Account } from '@shared/schema';
 import { formatCurrency } from '@/lib/utils';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import { addDays, addMonths, format, isWithinInterval, isSameDay, parseISO, subMonths, isAfter, isBefore } from 'date-fns';
 import { transactionCategories } from '@shared/schema';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -268,6 +268,22 @@ export function CategoryExpenseForecast({ transactions, isLoading }: CategoryExp
     return Object.keys(firstMonth).filter(key => key !== 'month');
   }, [forecastData]);
   
+  // Calculate total for each month
+  const monthlyTotals = React.useMemo(() => {
+    if (!forecastData.length) return [];
+    
+    return forecastData.map(monthData => {
+      let total = 0;
+      categories.forEach(category => {
+        total += (monthData[category] || 0);
+      });
+      return {
+        ...monthData,
+        total
+      };
+    });
+  }, [forecastData, categories]);
+  
   return (
     <Card className="bg-white">
       <CardHeader className="space-y-1">
@@ -361,9 +377,9 @@ export function CategoryExpenseForecast({ transactions, isLoading }: CategoryExp
           <div className="h-[500px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={forecastData}
+                data={monthlyTotals}
                 margin={{
-                  top: 20,
+                  top: 40,
                   right: 30,
                   left: 20,
                   bottom: 100,
@@ -465,6 +481,46 @@ export function CategoryExpenseForecast({ transactions, isLoading }: CategoryExp
                     radius={[0, 0, 0, 0]}
                   />
                 ))}
+                
+                {/* This is an invisible bar to place the total label */}
+                <Bar 
+                  dataKey="total" 
+                  fill="transparent" 
+                  stroke="transparent"
+                  isAnimationActive={false}
+                >
+                  <LabelList 
+                    dataKey="total" 
+                    position="top" 
+                    content={(props: any) => {
+                      const { x, y, width, height, value } = props;
+                      if (!value) return null;
+                      
+                      return (
+                        <g>
+                          <rect 
+                            x={x + width/2 - 40} 
+                            y={y - 24} 
+                            width={80} 
+                            height={22} 
+                            rx={4} 
+                            fill="#334155" 
+                          />
+                          <text 
+                            x={x + width/2} 
+                            y={y - 10} 
+                            fill="white" 
+                            textAnchor="middle" 
+                            fontSize={12}
+                            fontWeight="500"
+                          >
+                            {formatCurrency(value)}
+                          </text>
+                        </g>
+                      );
+                    }}
+                  />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
