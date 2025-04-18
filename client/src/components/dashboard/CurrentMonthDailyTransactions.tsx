@@ -158,13 +158,19 @@ export function CurrentMonthDailyTransactions({
   
   const chartData = useMemo(() => {
     const dailyData = new Map();
+    const categories = new Set<string>();
     
-    // Group by day of month, separate income and expenses
+    // Group by day of month, separate income and expenses by category
     currentMonth.forEach(tx => {
       const day = format(new Date(tx.date), 'd'); // get day of month (1-31)
       
       if (!dailyData.has(day)) {
-        dailyData.set(day, { day, income: 0, expense: 0 });
+        dailyData.set(day, { 
+          day, 
+          income: 0,
+          totalExpense: 0, // Track total expense for each day
+          // We'll dynamically add categories later
+        });
       }
       
       const entry = dailyData.get(day);
@@ -172,13 +178,32 @@ export function CurrentMonthDailyTransactions({
       if (tx.type === 'Income') {
         entry.income += tx.amount;
       } else if (tx.type === 'Expense') {
-        entry.expense += tx.amount;
+        // Add category if it doesn't exist in the entry
+        if (tx.category) {
+          categories.add(tx.category);
+          
+          // Initialize category if it doesn't exist
+          if (!entry[tx.category]) {
+            entry[tx.category] = 0;
+          }
+          
+          // Add to category amount
+          entry[tx.category] += tx.amount;
+          // Also add to total expense
+          entry.totalExpense += tx.amount;
+        }
       }
     });
     
     // Convert map to array and sort by day
-    return Array.from(dailyData.values())
+    const result = Array.from(dailyData.values())
       .sort((a, b) => parseInt(a.day) - parseInt(b.day));
+    
+    // Store the categories list for rendering
+    return {
+      data: result,
+      categories: Array.from(categories)
+    };
   }, [currentMonth]);
 
   // Calculate total income and expenses for the month
@@ -211,6 +236,9 @@ export function CurrentMonthDailyTransactions({
     );
   }
 
+  // Safely cast the chart data structure
+  const processedData = chartData as { data: any[]; categories: string[] };
+  
   return (
     <Card className="col-span-1 shadow-sm">
       <CardHeader className="pb-2">
@@ -235,8 +263,8 @@ export function CurrentMonthDailyTransactions({
         <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
-              data={chartData}
-              margin={{ top: 20, right: 20, left: 0, bottom: 5 }}
+              data={processedData.data}
+              margin={{ top: 30, right: 20, left: 0, bottom: 5 }}
             >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
@@ -247,13 +275,76 @@ export function CurrentMonthDailyTransactions({
                 tickFormatter={(value) => `${currencySymbol}${value}`}
               />
               <Tooltip 
-                formatter={(value: number) => [`${currencySymbol}${value.toFixed(2)}`, '']}
+                formatter={(value: number, name: string) => {
+                  // Format name to be more readable
+                  const formattedName = name === 'income' 
+                    ? 'Income' 
+                    : name === 'totalExpense'
+                      ? 'Total Expense'
+                      : name;
+                  
+                  return [`${currencySymbol}${value.toFixed(2)}`, formattedName];
+                }}
                 labelFormatter={(label) => `Day ${label}`}
               />
               <Legend />
               <ReferenceLine y={0} stroke="#000" />
-              <Bar dataKey="income" name="Income" fill="#4ade80" />
-              <Bar dataKey="expense" name="Expense" fill="#f87171" />
+              
+              {/* Income Bar */}
+              <Bar 
+                dataKey="income" 
+                name="Income" 
+                fill="#4ade80" 
+                stackId="stack1"
+                label={{
+                  position: 'top',
+                  formatter: (value: number) => value > 0 ? `${currencySymbol}${value.toFixed(0)}` : '',
+                  fill: '#374151',
+                  fontSize: 10
+                }}
+              />
+              
+              {/* Expense Category Bars - Stacked */}
+              {processedData.categories.map((category, index) => {
+                // Generate a unique color for each category
+                const colors = [
+                  '#f87171', // red
+                  '#fb923c', // orange
+                  '#fbbf24', // amber
+                  '#a3e635', // lime
+                  '#34d399', // emerald
+                  '#22d3ee', // cyan
+                  '#818cf8', // indigo
+                  '#c084fc', // purple
+                  '#f472b6', // pink
+                ];
+                
+                const colorIndex = index % colors.length;
+                
+                return (
+                  <Bar 
+                    key={category}
+                    dataKey={category}
+                    name={category}
+                    stackId="stack2"
+                    fill={colors[colorIndex]}
+                  />
+                );
+              })}
+              
+              {/* Add a data-less total bar just for label showing - for expense total */}
+              <Bar 
+                dataKey="totalExpense"
+                name="Total Expense"
+                stackId="fake"
+                fill="none"
+                label={{
+                  position: 'top',
+                  formatter: (value: number) => value > 0 ? `${currencySymbol}${value.toFixed(0)}` : '',
+                  fill: '#374151',
+                  fontSize: 10
+                }}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
