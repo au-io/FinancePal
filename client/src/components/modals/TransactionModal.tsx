@@ -106,6 +106,7 @@ export function TransactionModal({
       frequency: 'Monthly',
       frequencyDay: 1,
       frequencyCustomDays: 7,
+      recurringEndDate: undefined,
       userId: 0, // Will be set by the server
     },
   });
@@ -117,6 +118,12 @@ export function TransactionModal({
         ? new Date(editingTransaction.date) 
         : new Date();
 
+      // Check if recurringEndDate exists and is valid
+      let recurringEndDate = undefined;
+      if (editingTransaction.recurringEndDate) {
+        recurringEndDate = new Date(editingTransaction.recurringEndDate);
+      }
+      
       form.reset({
         sourceAccountId: editingTransaction.sourceAccountId,
         destinationAccountId: editingTransaction.destinationAccountId,
@@ -129,6 +136,7 @@ export function TransactionModal({
         frequency: editingTransaction.frequency as any || 'Monthly',
         frequencyDay: editingTransaction.frequencyDay || 1,
         frequencyCustomDays: editingTransaction.frequencyCustomDays || 7,
+        recurringEndDate,
         userId: 0,
       });
       
@@ -146,6 +154,7 @@ export function TransactionModal({
         frequency: 'Monthly',
         frequencyDay: 1,
         frequencyCustomDays: 7,
+        recurringEndDate: undefined,
         userId: 0,
       });
       setShowRecurringOptions(false);
@@ -191,6 +200,10 @@ export function TransactionModal({
       frequency: values.isRecurring ? values.frequency : undefined,
       frequencyDay: values.isRecurring && values.frequency === 'Monthly' ? values.frequencyDay : undefined,
       frequencyCustomDays: values.isRecurring && values.frequency === 'Custom' ? values.frequencyCustomDays : undefined,
+      // Convert recurringEndDate to ISO string if it exists
+      recurringEndDate: values.isRecurring && values.recurringEndDate 
+        ? values.recurringEndDate instanceof Date ? values.recurringEndDate.toISOString() : values.recurringEndDate
+        : undefined,
     };
     
     onSubmit(submissionValues);
@@ -554,6 +567,64 @@ export function TransactionModal({
                     )}
                   />
                 )}
+                
+                {/* End date for recurring transactions */}
+                <FormField
+                  control={form.control}
+                  name="recurringEndDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>End Date (Optional)</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value ? (
+                                format(field.value, "PPP")
+                              ) : (
+                                <span>No end date (runs indefinitely)</span>
+                              )}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <div className="px-4 py-2 border-b">
+                            <div className="flex justify-between items-center">
+                              <h3 className="font-medium">End Date</h3>
+                              {field.value && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => field.onChange(undefined)}
+                                >
+                                  Clear
+                                </Button>
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              Select when to stop this recurring transaction
+                            </p>
+                          </div>
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) => date < new Date()}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             )}
 
