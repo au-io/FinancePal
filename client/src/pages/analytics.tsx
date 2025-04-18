@@ -9,6 +9,7 @@ import { SimplifiedSpendingAnalytics } from '@/components/analytics/SimplifiedSp
 import { SubscriptionAnalytics } from '@/components/analytics/SubscriptionAnalytics';
 import { TransactionCalendar } from '@/components/dashboard/TransactionCalendar';
 import { ExtendedCashFlowForecast } from '@/components/analytics/ExtendedCashFlowForecast';
+import { CategoryExpenseForecast } from '@/components/analytics/CategoryExpenseForecast';
 import { Loader2 } from 'lucide-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import {
@@ -243,6 +244,13 @@ export default function Analytics() {
               <ExtendedCashFlowForecast
                 transactions={Array.isArray(transactions) ? transactions : []}
                 accounts={Array.isArray(accounts) ? accounts : []}
+                isLoading={isLoading}
+              />
+            </ErrorBoundary>
+            
+            <ErrorBoundary componentName="Category Expense Forecast">
+              <CategoryExpenseForecast
+                transactions={Array.isArray(transactions) ? transactions : []}
                 isLoading={isLoading}
               />
             </ErrorBoundary>
