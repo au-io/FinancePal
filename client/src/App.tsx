@@ -15,6 +15,7 @@ import RecurringTransactions from "@/pages/recurring-transactions";
 import Categories from "@/pages/categories";
 import Family from "@/pages/family";
 import Analytics from "@/pages/analytics";
+import ProfilePage from "@/pages/profile";
 import AdminFamilies from "@/pages/admin/families";
 import AdminUsers from "@/pages/admin/users";
 
@@ -28,6 +29,7 @@ function Router() {
       <ProtectedRoute path="/categories" component={Categories} />
       <ProtectedRoute path="/family" component={Family} />
       <ProtectedRoute path="/analytics" component={Analytics} />
+      <ProtectedRoute path="/profile" component={ProfilePage} />
       <ProtectedRoute path="/admin/families" component={AdminFamilies} adminRequired={true} />
       <ProtectedRoute path="/admin/users" component={AdminUsers} adminRequired={true} />
       <Route path="/auth" component={AuthPage} />
