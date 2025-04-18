@@ -107,17 +107,17 @@ export function SimplifiedAccountBalanceTrend({ transactions, accounts, isPerson
             <h3 className="text-sm font-medium text-gray-500 mb-2">Top Accounts</h3>
             <div className="space-y-2">
               {topAccounts.map(account => (
-                <div key={account.id} className="flex justify-between items-center p-2 border rounded-md">
+                <div key={account.id} className="flex justify-between items-center p-3 border rounded-md">
                   <div className="flex items-center">
-                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-2">
-                      <span className="text-xs">{account.icon}</span>
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-3 flex-shrink-0">
+                      <span className="text-xs">{account.icon || '💰'}</span>
                     </div>
-                    <div>
-                      <p className="font-medium text-sm">{account.name}</p>
-                      <p className="text-xs text-gray-500">{account.category}</p>
+                    <div className="min-w-0 mr-2">
+                      <p className="font-medium text-sm truncate">{account.name}</p>
+                      <p className="text-xs text-gray-500 truncate">{account.category}</p>
                     </div>
                   </div>
-                  <p className="font-medium">{formatCurrency(account.balance || 0)}</p>
+                  <p className="font-medium text-right whitespace-nowrap">{formatCurrency(account.balance || 0)}</p>
                 </div>
               ))}
             </div>
