@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Hide debug element labels that start with account_ or credit_ */
+[id^="account_"],
+[id^="credit_"] {
+  display: none;
+}
+
 @layer base {
   * {
     @apply border-border;
