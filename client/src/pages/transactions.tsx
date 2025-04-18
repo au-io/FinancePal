@@ -167,6 +167,8 @@ export default function Transactions() {
     {
       header: 'Date',
       accessor: (tx: Transaction) => formatDate(tx.date),
+      sortable: true,
+      sortKey: 'date',
     },
     {
       header: 'Description',
@@ -175,6 +177,8 @@ export default function Transactions() {
     {
       header: 'Category',
       accessor: 'category',
+      sortable: true,
+      sortKey: 'category',
     },
     {
       header: 'Account',
@@ -184,14 +188,20 @@ export default function Transactions() {
         }
         return tx.sourceAccountName || 'Unknown';
       },
+      sortable: true,
+      sortKey: 'sourceAccountId',
     },
     {
       header: 'Type',
       accessor: 'type',
+      sortable: true,
+      sortKey: 'type',
     },
     {
       header: 'User',
       accessor: (tx: any) => tx.userName || 'Unknown',
+      sortable: true,
+      sortKey: 'userId',
     },
     {
       header: 'Amount',
@@ -202,6 +212,8 @@ export default function Transactions() {
         </span>
       ),
       className: 'text-right',
+      sortable: true,
+      sortKey: 'amount',
     },
     {
       header: 'Actions',
@@ -378,6 +390,8 @@ export default function Transactions() {
               pagination
               pageSize={10}
               searchable
+              defaultSortKey="date"
+              defaultSortDirection="asc"
             />
           )}
         </CardContent>
