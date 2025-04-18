@@ -38,6 +38,12 @@ const profileFormSchema = z.object({
   email: z.string().email({
     message: "Please enter a valid email address.",
   }).optional().or(z.literal('')),
+  phoneNumber: z.string()
+    .regex(/^(\+\d{1,3})?\s?\(?\d{1,4}\)?[\s.-]?\d{1,5}[\s.-]?\d{1,9}$/, {
+      message: "Please enter a valid phone number.",
+    })
+    .optional()
+    .or(z.literal('')),
 });
 
 // Password change schema
@@ -67,6 +73,7 @@ export default function ProfilePage() {
     defaultValues: {
       name: user?.name || '',
       email: user?.email || '',
+      phoneNumber: user?.phoneNumber || '',
     },
   });
 
@@ -174,6 +181,11 @@ export default function ProfilePage() {
                 </div>
                 
                 <div className="grid grid-cols-3 gap-4">
+                  <div className="font-medium text-muted-foreground">Phone Number</div>
+                  <div className="col-span-2">{user?.phoneNumber || 'Not set'}</div>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-4">
                   <div className="font-medium text-muted-foreground">Role</div>
                   <div className="col-span-2">{user?.isAdmin ? 'Administrator' : 'Regular User'}</div>
                 </div>
@@ -215,6 +227,23 @@ export default function ProfilePage() {
                         </FormControl>
                         <FormDescription>
                           Your email address (optional).
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={profileForm.control}
+                    name="phoneNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="+44 7123 456789" type="tel" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          Your contact phone number (optional).
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
