@@ -297,7 +297,7 @@ export function TransactionCalendar({ transactions, isLoading }: TransactionCale
       <CardContent>
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
-            <style jsx global>{`
+            <style dangerouslySetInnerHTML={{ __html: `
               .income-day {
                 position: relative;
               }
@@ -337,7 +337,7 @@ export function TransactionCalendar({ transactions, isLoading }: TransactionCale
                 border-radius: 50%;
                 background: linear-gradient(135deg, #10B981 50%, #EF4444 50%);
               }
-            `}</style>
+            ` }} />
             
             <Calendar
               mode="single"
