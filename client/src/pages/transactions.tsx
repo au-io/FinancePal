@@ -37,6 +37,7 @@ export default function Transactions() {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [selectedRecurring, setSelectedRecurring] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<{ from: Date; to?: Date } | undefined>(undefined);
 
   // Fetch accounts
@@ -64,12 +65,28 @@ export default function Transactions() {
     queryKey: [`/api/transactions?${buildQueryString()}`],
   });
 
-  // Filter transactions by type
+  // Filter transactions by type and recurring status
   const filteredTransactions = React.useMemo(() => {
     if (!transactions) return [];
-    if (!selectedType || selectedType === 'all') return transactions;
-    return transactions.filter((tx: Transaction) => tx.type === selectedType);
-  }, [transactions, selectedType]);
+    
+    let filtered = [...transactions];
+    
+    // Filter by transaction type
+    if (selectedType && selectedType !== 'all') {
+      filtered = filtered.filter((tx: Transaction) => tx.type === selectedType);
+    }
+    
+    // Filter by recurring status
+    if (selectedRecurring) {
+      if (selectedRecurring === 'recurring') {
+        filtered = filtered.filter((tx: Transaction) => tx.isRecurring === true);
+      } else if (selectedRecurring === 'non-recurring') {
+        filtered = filtered.filter((tx: Transaction) => !tx.isRecurring);
+      }
+    }
+    
+    return filtered;
+  }, [transactions, selectedType, selectedRecurring]);
 
   // Transaction mutations
   const transactionMutation = useMutation({
@@ -198,6 +215,32 @@ export default function Transactions() {
       sortKey: 'type',
     },
     {
+      header: 'Recurring',
+      accessor: (tx: Transaction) => {
+        if (!tx.isRecurring) return 'No';
+        
+        // Build recurring info string
+        let info = `Yes (${tx.frequency || 'Monthly'}`;
+        
+        // Add frequency-specific details
+        if (tx.frequency === 'Monthly' && tx.frequencyDay) {
+          info += ` on day ${tx.frequencyDay}`;
+        } else if (tx.frequency === 'Custom' && tx.frequencyCustomDays) {
+          info += ` every ${tx.frequencyCustomDays} day(s)`;
+        }
+        
+        // Add end date if exists
+        if (tx.recurringEndDate) {
+          info += `, until ${formatDate(tx.recurringEndDate)}`;
+        }
+        
+        info += ')';
+        return info;
+      },
+      sortable: true,
+      sortKey: 'isRecurring',
+    },
+    {
       header: 'User',
       accessor: (tx: any) => tx.userName || 'Unknown',
       sortable: true,
@@ -309,7 +352,7 @@ export default function Transactions() {
           <CardDescription>Filter your transactions</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Account</label>
               <Select value={selectedAccountId || 'all'} onValueChange={setSelectedAccountId}>
@@ -338,6 +381,20 @@ export default function Transactions() {
                   <SelectItem value="Income">Income</SelectItem>
                   <SelectItem value="Expense">Expense</SelectItem>
                   <SelectItem value="Transfer">Transfer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Recurring</label>
+              <Select value={selectedRecurring || 'all'} onValueChange={setSelectedRecurring}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Transactions" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Transactions</SelectItem>
+                  <SelectItem value="recurring">Recurring Only</SelectItem>
+                  <SelectItem value="non-recurring">Non-Recurring Only</SelectItem>
                 </SelectContent>
               </Select>
             </div>
