@@ -266,10 +266,21 @@ export function ImportTransactionsModal({
             // Get amount and validate
             const amountKey = 'Amount' in row ? 'Amount' : 'amount';
             const amountStr = row[amountKey] ? row[amountKey].trim() : '';
-            const amount = parseFloat(amountStr || '0');
+            let amount = parseFloat(amountStr || '0');
             
             if (isNaN(amount)) {
               throw new Error(`Invalid amount: "${amountStr}"`);
+            }
+            
+            // Determine transaction type
+            const typeKey = 'Type' in row ? 'Type' : 'type';
+            let type = row[typeKey] ? row[typeKey].trim() : '';
+            
+            // For Expense type with negative amount values, ensure amount is positive
+            // to avoid double negatives when the system applies the sign later
+            if (type.toLowerCase().includes('expense') && amount < 0) {
+              // Convert to positive since the system will apply the negative sign
+              amount = Math.abs(amount);
             }
             
             // Get date and validate
@@ -286,20 +297,18 @@ export function ImportTransactionsModal({
               throw new Error(`Invalid date: "${dateStr}". Use format YYYY-MM-DD.`);
             }
             
-            // Determine and validate transaction type
-            const typeKey = 'Type' in row ? 'Type' : 'type';
-            let type = row[typeKey] ? row[typeKey].trim() : '';
-            
+            // Normalize and validate transaction type
             if (!type) {
               // Auto-determine type based on amount if not provided
               type = amount >= 0 ? 'Income' : 'Expense';
             } else {
               // Normalize transaction type to match one of the valid types
               const normalizedType = normalizeTransactionType(type);
-              if (!normalizedType) {
+              if (normalizedType) {
+                type = normalizedType;
+              } else {
                 throw new Error(`Invalid transaction type: "${type}". Must be one of: Income, Expense, or Transfer.`);
               }
-              type = normalizedType;
             }
             
             // Skip transfer transactions without destination accounts
@@ -346,9 +355,9 @@ export function ImportTransactionsModal({
             }
             
             transactions.push(transaction);
-          } catch (rowError) {
+          } catch (rowError: any) {
             errorCount++;
-            errors.push(`Row ${i * batchSize + transactions.length + 1}: ${rowError.message}`);
+            errors.push(`Row ${i * batchSize + transactions.length + 1}: ${rowError.message || 'Unknown error'}`);
             
             // If too many errors, stop processing
             if (errorCount > 5) {
@@ -367,8 +376,8 @@ export function ImportTransactionsModal({
             apiRequest('POST', '/api/transactions', tx)
           ));
           importedCount += transactions.length;
-        } catch (batchError) {
-          throw new Error(`Error importing batch ${i+1}: ${batchError.message}`);
+        } catch (batchError: any) {
+          throw new Error(`Error importing batch ${i+1}: ${batchError.message || 'Unknown error'}`);
         }
         
         // Update progress
