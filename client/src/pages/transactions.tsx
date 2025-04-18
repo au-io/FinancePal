@@ -8,8 +8,18 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { TransactionModal } from '@/components/modals/TransactionModal';
 import { ImportTransactionsModal } from '@/components/transactions/ImportTransactionsModal';
-import { Transaction } from '@shared/schema';
+import { Transaction as BaseTransaction } from '@shared/schema';
 import { formatCurrency, formatDate } from '@/lib/utils';
+
+// Extended Transaction type to include UI-specific properties
+interface Transaction extends BaseTransaction {
+  isFutureTransaction?: boolean;
+  sourceAccountName?: string;
+  destinationAccountName?: string;
+  userName?: string;
+  userUsername?: string;
+}
+
 import { DatePickerWithRange } from '@/components/ui/date-picker-with-range';
 import {
   Select,
@@ -65,6 +75,83 @@ export default function Transactions() {
     queryKey: [`/api/transactions?${buildQueryString()}`],
   });
 
+  // Helper function to get the next occurrence date
+  const getNextOccurrenceDate = (transaction: Transaction, currentDate: Date): Date | null => {
+    if (!transaction.isRecurring) return null;
+    
+    // Clone the date to avoid modifying the original
+    const baseDate = new Date(transaction.date);
+    const nextDate = new Date(baseDate);
+    
+    switch (transaction.frequency) {
+      case 'Monthly':
+        // Set the day of the month
+        nextDate.setDate(transaction.frequencyDay || baseDate.getDate());
+        // If the date is in the past, move to next month
+        if (nextDate <= currentDate) {
+          nextDate.setMonth(nextDate.getMonth() + 1);
+        }
+        break;
+      case 'Yearly':
+        // Keep the same day and month, but increment the year if needed
+        if (nextDate <= currentDate) {
+          nextDate.setFullYear(nextDate.getFullYear() + 1);
+        }
+        break;
+      case 'Custom':
+        // For custom days, add the frequency days to the current date
+        if (transaction.frequencyCustomDays) {
+          const daysSinceBase = Math.floor((currentDate.getTime() - baseDate.getTime()) / (1000 * 60 * 60 * 24));
+          const cycles = Math.floor(daysSinceBase / transaction.frequencyCustomDays);
+          nextDate.setDate(baseDate.getDate() + (cycles + 1) * transaction.frequencyCustomDays);
+        }
+        break;
+      default:
+        return null;
+    }
+    
+    // Check if we've passed the end date
+    if (transaction.recurringEndDate && nextDate > new Date(transaction.recurringEndDate)) {
+      return null;
+    }
+    
+    return nextDate;
+  };
+  
+  // Generate future occurrences of recurring transactions
+  const generateFutureTransactions = (recurringTransactions: Transaction[]): Transaction[] => {
+    const currentDate = new Date();
+    // Generate transactions for the next 90 days (approximately 3 months)
+    const futureEndDate = new Date();
+    futureEndDate.setDate(currentDate.getDate() + 90);
+    
+    const futureTransactions: Transaction[] = [];
+    
+    recurringTransactions.forEach(transaction => {
+      let nextDate = getNextOccurrenceDate(transaction, currentDate);
+      let occurrenceCount = 0;
+      const maxOccurrences = 12; // Limit to prevent infinite loops
+      
+      while (nextDate && nextDate <= futureEndDate && occurrenceCount < maxOccurrences) {
+        // Create a future transaction based on the recurring one
+        const futureTransaction: Transaction = {
+          ...transaction,
+          date: nextDate,
+          id: `future-${transaction.id}-${occurrenceCount}` as unknown as number, // Generate a unique ID for UI purpose
+          isFutureTransaction: true // Mark as a future transaction
+        };
+        
+        futureTransactions.push(futureTransaction);
+        
+        // Get the next occurrence
+        nextDate = getNextOccurrenceDate(transaction, nextDate);
+        occurrenceCount++;
+      }
+    });
+    
+    return futureTransactions;
+  };
+
   // Filter transactions by type and recurring status
   const filteredTransactions = React.useMemo(() => {
     if (!transactions) return [];
@@ -85,7 +172,12 @@ export default function Transactions() {
       }
     }
     
-    return filtered;
+    // Add future occurrences of recurring transactions
+    const recurringTransactions = filtered.filter(tx => tx.isRecurring);
+    const futureTransactions = generateFutureTransactions(recurringTransactions);
+    
+    // Combine with the filtered transactions
+    return [...filtered, ...futureTransactions];
   }, [transactions, selectedType, selectedRecurring]);
 
   // Transaction mutations
@@ -183,7 +275,18 @@ export default function Transactions() {
   const transactionsTableColumns = [
     {
       header: 'Date',
-      accessor: (tx: Transaction) => formatDate(tx.date),
+      accessor: (tx: Transaction) => {
+        // Add a visual indicator for future transactions
+        if (tx.isFutureTransaction) {
+          return (
+            <span className="text-blue-600 flex items-center">
+              <span className="inline-block h-2 w-2 rounded-full bg-blue-500 mr-2"></span>
+              {formatDate(tx.date)} (Future)
+            </span>
+          );
+        }
+        return formatDate(tx.date);
+      },
       sortable: true,
       sortKey: 'date',
     },
@@ -260,48 +363,60 @@ export default function Transactions() {
     },
     {
       header: 'Actions',
-      accessor: (tx: Transaction) => (
-        <div className="flex justify-end space-x-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleEditTransaction(tx);
-            }}
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Trash2 className="h-4 w-4 text-red-500" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Transaction</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to delete this transaction? This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  className="bg-red-500 hover:bg-red-600"
-                  onClick={() => handleDeleteTransaction(tx.id)}
+      accessor: (tx: Transaction) => {
+        // For future transactions, don't show edit/delete buttons
+        if (tx.isFutureTransaction) {
+          return (
+            <div className="flex justify-end text-xs text-gray-500 italic">
+              Future Transaction
+            </div>
+          );
+        }
+        
+        // For actual transactions, show edit/delete buttons
+        return (
+          <div className="flex justify-end space-x-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEditTransaction(tx);
+              }}
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      ),
+                  <Trash2 className="h-4 w-4 text-red-500" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Transaction</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete this transaction? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-red-500 hover:bg-red-600"
+                    onClick={() => handleDeleteTransaction(tx.id)}
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        );
+      },
     },
   ];
 
@@ -443,7 +558,12 @@ export default function Transactions() {
             <DataTable 
               data={filteredTransactions}
               columns={transactionsTableColumns}
-              onRowClick={handleEditTransaction}
+              onRowClick={(transaction) => {
+                // Only allow editing non-future transactions
+                if (!transaction.isFutureTransaction) {
+                  handleEditTransaction(transaction);
+                }
+              }}
               pagination
               pageSize={10}
               searchable
