@@ -181,6 +181,10 @@ export default function Transactions() {
       accessor: 'type',
     },
     {
+      header: 'User',
+      accessor: (tx: any) => tx.userName || 'Unknown',
+    },
+    {
       header: 'Amount',
       accessor: (tx: Transaction) => (
         <span className={tx.type === 'Income' ? 'text-green-500' : tx.type === 'Expense' ? 'text-red-500' : ''}>

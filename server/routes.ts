@@ -394,7 +394,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
     
-    res.json(transactions);
+    // Enhance transactions with user data
+    const enhancedTransactions = await Promise.all(transactions.map(async (transaction) => {
+      const user = await storage.getUser(transaction.userId);
+      return {
+        ...transaction,
+        userName: user ? user.name : 'Unknown User',
+        userUsername: user ? user.username : 'unknown'
+      };
+    }));
+    
+    res.json(enhancedTransactions);
   });
   
   app.get("/api/transactions/:id", requireAuth, async (req, res) => {
@@ -548,7 +558,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     const familyTransactions = await storage.getTransactionsByFamilyId(user.familyId);
-    res.json(familyTransactions);
+    
+    // Enhance transactions with user data
+    const enhancedTransactions = await Promise.all(familyTransactions.map(async (transaction) => {
+      const user = await storage.getUser(transaction.userId);
+      return {
+        ...transaction,
+        userName: user ? user.name : 'Unknown User',
+        userUsername: user ? user.username : 'unknown'
+      };
+    }));
+    
+    res.json(enhancedTransactions);
   });
   
   // CSV Templates
@@ -645,7 +666,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     // Build CSV header based on transaction types
-    let csvHeader = "Date,Type,Category,Description,Amount";
+    let csvHeader = "Date,Type,Category,Description,Amount,CreatedBy";
     
     // Add destination account column if there are any transfer transactions
     const hasTransfers = transactions.some(tx => tx.type === "Transfer");
@@ -658,7 +679,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sourceAccount = await storage.getAccount(tx.sourceAccountId);
       const sourceAccountName = sourceAccount ? sourceAccount.name : "Unknown Account";
       
-      let row = `${new Date(tx.date).toISOString().split('T')[0]},${tx.type},${tx.category},"${tx.description || ''}",${tx.amount}`;
+      // Get user info for the transaction
+      const user = await storage.getUser(tx.userId);
+      const userName = user ? user.name : "Unknown User";
+      
+      let row = `${new Date(tx.date).toISOString().split('T')[0]},${tx.type},${tx.category},"${tx.description || ''}",${tx.amount},"${userName}"`;
       
       // Add destination account for transfers
       if (hasTransfers) {
