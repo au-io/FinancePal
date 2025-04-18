@@ -221,12 +221,13 @@ export async function setupAuth(app: Express) {
     if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
     
     try {
-      const { name, email } = req.body;
+      const { name, email, phoneNumber } = req.body;
       const userId = req.user!.id;
       
       const updatedUser = await storage.updateUser(userId, { 
         name, 
-        email: email || null // Allow removing email by sending empty string
+        email: email || null, // Allow removing email by sending empty string
+        phoneNumber: phoneNumber || null // Allow removing phone number by sending empty string
       });
       
       if (!updatedUser) {
