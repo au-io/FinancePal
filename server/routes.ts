@@ -559,7 +559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     let csvContent = "# JoBa Finance - Regular Transaction Import Template\n";
     csvContent += "# Date Format: YYYY-MM-DD (e.g., 2025-04-18)\n";
     csvContent += "# Type: Income, Expense (synonyms like salary, payment, bill are also supported)\n";
-    csvContent += "# Category: " + transactionCategories.join(", ") + "\n";
+    csvContent += "# Category: Housing, Transportation, Food, Utilities, Insurance, Healthcare, Savings, Personal, Entertainment, Education, Debt, Gifts, Salary, Business, Other\n";
     csvContent += "# Amount: Positive number for Income, Negative number for Expense\n";
     csvContent += "#\n";
     
