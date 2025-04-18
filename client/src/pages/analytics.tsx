@@ -4,8 +4,8 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
 import { ViewToggle } from '@/components/layout/ViewToggle';
-import { AccountBalanceTrend } from '@/components/analytics/AccountBalanceTrend';
-import { SpendingAnalytics } from '@/components/analytics/SpendingAnalytics';
+import { SimplifiedAccountBalanceTrend } from '@/components/analytics/SimplifiedAccountBalanceTrend';
+import { SimplifiedSpendingAnalytics } from '@/components/analytics/SimplifiedSpendingAnalytics';
 import { SubscriptionAnalytics } from '@/components/analytics/SubscriptionAnalytics';
 import { TransactionCalendar } from '@/components/dashboard/TransactionCalendar';
 import { Loader2 } from 'lucide-react';
@@ -216,7 +216,7 @@ export default function Analytics() {
                 </Card>
               }
             >
-              <AccountBalanceTrend 
+              <SimplifiedAccountBalanceTrend 
                 transactions={Array.isArray(transactions) ? transactions : []} 
                 accounts={Array.isArray(accounts) ? accounts : []} 
                 isPersonalView={isPersonalView}
@@ -239,7 +239,7 @@ export default function Analytics() {
             </div>
             
             <ErrorBoundary componentName="Spending Analytics">
-              <SpendingAnalytics 
+              <SimplifiedSpendingAnalytics 
                 transactions={Array.isArray(transactions) ? transactions : []} 
                 timeframe={timeframe} 
               />
