@@ -101,14 +101,39 @@ export function ImportTransactionsModal({
         
         // Convert each row to a transaction
         const transactions = batch.map(row => {
-          return {
+          // Determine the transaction type
+          const type = row.Type || (parseFloat(row.Amount || '0') >= 0 ? 'Income' : 'Expense');
+          
+          // Skip transfer transactions without destination accounts
+          if (type === 'Transfer' && !row.DestinationAccount) {
+            throw new Error(`Transfer transaction requires a destination account. Row: ${JSON.stringify(row)}`);
+          }
+          
+          // Create base transaction object
+          const transaction: any = {
             sourceAccountId: parseInt(accountId),
             amount: parseFloat(row.Amount || '0'),
-            type: row.Type || (parseFloat(row.Amount || '0') >= 0 ? 'Income' : 'Expense'),
+            type: type,
             category: row.Category || 'Other',
             description: row.Description || '',
             date: new Date(row.Date || new Date()).toISOString(),
           };
+          
+          // If it's a transfer and has a destination account, add it
+          if (type === 'Transfer' && row.DestinationAccount) {
+            // Find the account ID by name
+            const destinationAccount = accounts.find(a => 
+              a.name.toLowerCase() === row.DestinationAccount.toLowerCase()
+            );
+            
+            if (destinationAccount) {
+              transaction.destinationAccountId = destinationAccount.id;
+            } else {
+              throw new Error(`Destination account '${row.DestinationAccount}' not found`);
+            }
+          }
+          
+          return transaction;
         });
         
         // Post transactions
@@ -182,9 +207,14 @@ export function ImportTransactionsModal({
                 className="flex-1"
               />
             </div>
-            <p className="text-xs text-gray-500">
-              CSV should have columns: Date, Amount, Type, Category, Description
-            </p>
+            <div className="space-y-1">
+              <p className="text-xs text-gray-500">
+                CSV should have columns: Date, Amount, Type, Category, Description
+              </p>
+              <p className="text-xs text-gray-500">
+                For Transfer transactions, add the 'DestinationAccount' column with the exact account name.
+              </p>
+            </div>
           </div>
           
           {error && (
