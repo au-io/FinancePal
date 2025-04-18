@@ -288,57 +288,71 @@ export function TransactionCalendar({ transactions, isLoading }: TransactionCale
     }
   }, [transactions]);
 
+  // Get current month and next month for the dual calendar view
+  const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+  
+  // Calculate next month
+  const nextMonthDate = new Date(currentYear, currentMonth + 1, 1);
+  const nextMonth = nextMonthDate.getMonth();
+  const nextMonthYear = nextMonthDate.getFullYear();
+
   return (
     <Card className="bg-white">
       <CardHeader>
         <CardTitle>Transaction Calendar</CardTitle>
-        <CardDescription>View your daily transactions</CardDescription>
+        <CardDescription>View your daily transactions for the current and upcoming month</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
-            <style dangerouslySetInnerHTML={{ __html: `
-              .income-day {
-                position: relative;
-              }
-              .income-day::after {
-                content: '';
-                position: absolute;
-                top: 0;
-                right: 0;
-                width: 8px;
-                height: 8px;
-                border-radius: 50%;
-                background-color: #10B981;
-              }
-              .expense-day {
-                position: relative;
-              }
-              .expense-day::after {
-                content: '';
-                position: absolute;
-                top: 0;
-                right: 0;
-                width: 8px;
-                height: 8px;
-                border-radius: 50%;
-                background-color: #EF4444;
-              }
-              .both-day {
-                position: relative;
-              }
-              .both-day::after {
-                content: '';
-                position: absolute;
-                top: 0;
-                right: 0;
-                width: 8px;
-                height: 8px;
-                border-radius: 50%;
-                background: linear-gradient(135deg, #10B981 50%, #EF4444 50%);
-              }
-            ` }} />
-            
+        <style dangerouslySetInnerHTML={{ __html: `
+          .income-day {
+            position: relative;
+          }
+          .income-day::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #10B981;
+          }
+          .expense-day {
+            position: relative;
+          }
+          .expense-day::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #EF4444;
+          }
+          .both-day {
+            position: relative;
+          }
+          .both-day::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #10B981 50%, #EF4444 50%);
+          }
+        ` }} />
+
+        {/* Two-month calendar view */}
+        <div className="flex flex-col lg:flex-row gap-6 mb-4">
+          <div className="w-full lg:w-1/2">
+            <h3 className="text-sm font-medium mb-2">
+              {format(new Date(currentYear, currentMonth, 1), 'MMMM yyyy')}
+            </h3>
             <Calendar
               mode="single"
               selected={selectedDate}
@@ -354,57 +368,105 @@ export function TransactionCalendar({ transactions, isLoading }: TransactionCale
                 both: 'both-day',
               }}
               className="rounded-md border"
+              month={new Date(currentYear, currentMonth, 1)}
+              defaultMonth={new Date(currentYear, currentMonth, 1)}
+              fixedWeeks
             />
           </div>
           
-          <div className="flex-1">
-            <div className="mb-4">
-              <h3 className="text-sm font-medium mb-2">
-                {format(selectedDate, 'MMMM d, yyyy')}
-              </h3>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-green-50 p-2 rounded-md">
-                  <p className="text-xs text-gray-500">Income</p>
-                  <p className="text-green-500 font-medium">{formatCurrency(dayTotals.income)}</p>
-                </div>
-                <div className="bg-red-50 p-2 rounded-md">
-                  <p className="text-xs text-gray-500">Expenses</p>
-                  <p className="text-red-500 font-medium">{formatCurrency(dayTotals.expenses)}</p>
-                </div>
-                <div className="bg-gray-50 p-2 rounded-md">
-                  <p className="text-xs text-gray-500">Net</p>
-                  <p className={`font-medium ${dayTotals.net >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {formatCurrency(dayTotals.net)}
-                  </p>
-                </div>
+          <div className="w-full lg:w-1/2">
+            <h3 className="text-sm font-medium mb-2">
+              {format(new Date(nextMonthYear, nextMonth, 1), 'MMMM yyyy')}
+            </h3>
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={(date) => date && setSelectedDate(date)}
+              modifiers={{
+                income: dayWithTransactionsModifier.income,
+                expense: dayWithTransactionsModifier.expense,
+                both: dayWithTransactionsModifier.both,
+              }}
+              modifiersClassNames={{
+                income: 'income-day',
+                expense: 'expense-day',
+                both: 'both-day',
+              }}
+              className="rounded-md border"
+              month={new Date(nextMonthYear, nextMonth, 1)}
+              defaultMonth={new Date(nextMonthYear, nextMonth, 1)}
+              fixedWeeks
+            />
+          </div>
+        </div>
+        
+        {/* Legend */}
+        <div className="flex flex-wrap gap-4 justify-center mb-6 text-xs text-gray-600">
+          <div className="flex items-center">
+            <div className="w-3 h-3 rounded-full bg-green-500 mr-1"></div>
+            <span>Income</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-3 h-3 rounded-full bg-red-500 mr-1"></div>
+            <span>Expense</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-3 h-3 rounded-full mr-1" style={{ background: 'linear-gradient(135deg, #10B981 50%, #EF4444 50%)' }}></div>
+            <span>Both</span>
+          </div>
+          <div className="flex items-center ml-2">
+            <span className="text-xs italic">* Including recurring transactions</span>
+          </div>
+        </div>
+
+        {/* Selected day details */}
+        <div className="border-t pt-4">
+          <div className="mb-4">
+            <h3 className="text-sm font-medium mb-2">
+              Selected: {format(selectedDate, 'MMMM d, yyyy')}
+            </h3>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-green-50 p-2 rounded-md">
+                <p className="text-xs text-gray-500">Income</p>
+                <p className="text-green-500 font-medium">{formatCurrency(dayTotals.income)}</p>
+              </div>
+              <div className="bg-red-50 p-2 rounded-md">
+                <p className="text-xs text-gray-500">Expenses</p>
+                <p className="text-red-500 font-medium">{formatCurrency(dayTotals.expenses)}</p>
+              </div>
+              <div className="bg-gray-50 p-2 rounded-md">
+                <p className="text-xs text-gray-500">Net</p>
+                <p className={`font-medium ${dayTotals.net >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                  {formatCurrency(dayTotals.net)}
+                </p>
               </div>
             </div>
-            
-            <h3 className="text-sm font-medium mb-2">Transactions</h3>
-            {dayTransactions.length === 0 ? (
-              <p className="text-gray-500 text-sm py-2">No transactions on this date</p>
-            ) : (
-              <ScrollArea className="h-[250px]">
-                <div className="space-y-2">
-                  {dayTransactions.map((tx) => (
-                    <div key={tx.id} className="p-2 border rounded-md flex justify-between items-center">
-                      <div>
-                        <p className="font-medium text-sm">{tx.description || tx.category}</p>
-                        <p className="text-xs text-gray-500">{tx.category}</p>
-                      </div>
-                      <p className={`font-medium ${
-                        tx.type === 'Income' ? 'text-green-500' : 
-                        tx.type === 'Expense' ? 'text-red-500' : ''
-                      }`}>
-                        {tx.type === 'Income' ? '+' : tx.type === 'Expense' ? '-' : ''}
-                        {formatCurrency(tx.amount)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            )}
           </div>
+          
+          <h3 className="text-sm font-medium mb-2">Transactions</h3>
+          {dayTransactions.length === 0 ? (
+            <p className="text-gray-500 text-sm py-2">No transactions on this date</p>
+          ) : (
+            <ScrollArea className="h-[250px]">
+              <div className="space-y-2">
+                {dayTransactions.map((tx) => (
+                  <div key={tx.id} className="p-2 border rounded-md flex justify-between items-center">
+                    <div>
+                      <p className="font-medium text-sm">{tx.description || tx.category}</p>
+                      <p className="text-xs text-gray-500">{tx.category}</p>
+                    </div>
+                    <p className={`font-medium ${
+                      tx.type === 'Income' ? 'text-green-500' : 
+                      tx.type === 'Expense' ? 'text-red-500' : ''
+                    }`}>
+                      {tx.type === 'Income' ? '+' : tx.type === 'Expense' ? '-' : ''}
+                      {formatCurrency(tx.amount)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
         </div>
       </CardContent>
     </Card>
