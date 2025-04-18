@@ -4,8 +4,21 @@
 
 /* Hide debug element labels that start with account_ or credit_ */
 [id^="account_"],
-[id^="credit_"] {
-  display: none;
+[id^="account_balance"],
+[id^="credit_"],
+[id^="credit_card"] {
+  display: none !important;
+  position: absolute !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  width: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  -webkit-clip-path: inset(50%) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  opacity: 0 !important;
 }
 
 @layer base {

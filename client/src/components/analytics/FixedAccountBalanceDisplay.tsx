@@ -108,8 +108,15 @@ export function FixedAccountBalanceDisplay({ transactions, accounts, isPersonalV
             <h3 className="text-sm font-medium text-gray-500 mb-2">Top Accounts</h3>
             <div className="space-y-2">
               {topAccounts.map(account => (
-                <div key={account.id} className="flex justify-between items-center p-3 border rounded-md relative">
-                  <div className="flex items-center z-10 bg-white">
+                <div 
+                  key={account.id} 
+                  className="flex justify-between items-center p-3 border rounded-md relative overflow-hidden"
+                  style={{ position: 'relative' }}
+                >
+                  {/* This hidden div covers any ID-based text that might appear */}
+                  <div className="absolute inset-0 bg-white" style={{ zIndex: 1 }}></div>
+                  
+                  <div className="flex items-center relative" style={{ zIndex: 2 }}>
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3 flex-shrink-0">
                       <span className="text-sm">{account.icon || '💰'}</span>
                     </div>
@@ -118,7 +125,8 @@ export function FixedAccountBalanceDisplay({ transactions, accounts, isPersonalV
                       <p className="text-xs text-gray-500 truncate">{account.category}</p>
                     </div>
                   </div>
-                  <p className="font-medium text-right whitespace-nowrap z-10 bg-white px-1">
+                  
+                  <p className="font-medium text-right whitespace-nowrap relative" style={{ zIndex: 2 }}>
                     {formatCurrency(account.balance || 0)}
                   </p>
                 </div>
