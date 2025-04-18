@@ -384,7 +384,7 @@ export function TransactionCalendar({ transactions, isLoading }: TransactionCale
             {dayTransactions.length === 0 ? (
               <p className="text-gray-500 text-sm py-2">No transactions on this date</p>
             ) : (
-              <ScrollArea className="h-[180px]">
+              <ScrollArea className="h-[250px]">
                 <div className="space-y-2">
                   {dayTransactions.map((tx) => (
                     <div key={tx.id} className="p-2 border rounded-md flex justify-between items-center">

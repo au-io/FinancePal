@@ -133,11 +133,11 @@ export function CashFlowForecast({ transactions, accounts, isLoading }: CashFlow
         {isLoading ? (
           <div className="h-[300px] flex items-center justify-center bg-gray-50 rounded-lg animate-pulse" />
         ) : forecastData.length === 0 ? (
-          <div className="h-[300px] flex items-center justify-center">
+          <div className="h-[400px] flex items-center justify-center">
             <p className="text-gray-500">Not enough data for forecast</p>
           </div>
         ) : (
-          <div className="h-[300px]">
+          <div className="h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={forecastData}

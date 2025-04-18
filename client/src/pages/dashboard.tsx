@@ -170,11 +170,14 @@ export default function Dashboard() {
             isLoading={isLoading} 
           />
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="mb-6">
             <TransactionCalendar 
               transactions={transactions || []} 
               isLoading={isLoading} 
             />
+          </div>
+          
+          <div className="mb-6">
             <CashFlowForecast 
               transactions={transactions || []} 
               accounts={accounts || []} 
