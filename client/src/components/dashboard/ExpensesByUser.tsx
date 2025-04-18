@@ -59,41 +59,76 @@ export function ExpensesByUser({
     });
   }, [transactions]);
   
-  // Calculate expenses by user
+  // Calculate expenses by user with category split
   const expensesByUser = useMemo(() => {
-    // Create a map of userId to expense amount
-    const userExpenses = new Map<number, number>();
+    // Create a map of userId to expense data
+    const userExpenses = new Map<number, {
+      total: number;
+      categories: Map<string, number>;
+    }>();
     
-    // Calculate total expenses for each user
+    // Collect all unique categories
+    const allCategories = new Set<string>();
+    
+    // Calculate total expenses for each user and track by category
     currentMonthData.forEach(tx => {
       const userId = tx.userId;
+      const category = tx.category || 'Uncategorized';
       
+      // Add to all categories
+      allCategories.add(category);
+      
+      // Initialize user entry if not exists
       if (!userExpenses.has(userId)) {
-        userExpenses.set(userId, 0);
+        userExpenses.set(userId, {
+          total: 0,
+          categories: new Map<string, number>()
+        });
       }
       
-      userExpenses.set(userId, userExpenses.get(userId)! + tx.amount);
+      const userData = userExpenses.get(userId)!;
+      
+      // Add to total
+      userData.total += tx.amount;
+      
+      // Add to category
+      if (!userData.categories.has(category)) {
+        userData.categories.set(category, 0);
+      }
+      userData.categories.set(category, userData.categories.get(category)! + tx.amount);
     });
     
-    // Convert to array and add user names
-    const result = Array.from(userExpenses.entries()).map(([userId, amount]) => {
+    // Convert to array format for charts
+    const result = Array.from(userExpenses.entries()).map(([userId, data]) => {
       // Find user name from family members array
       const user = familyMembers.find(member => member.id === userId);
+      const userName = user ? user.name : `User ${userId}`;
       
-      return {
+      // Create base user object
+      const userResult: any = {
         userId,
-        name: user ? user.name : `User ${userId}`,
-        amount
+        name: userName,
+        amount: data.total,
       };
+      
+      // Add category data to user object
+      Array.from(data.categories.entries()).forEach(([category, amount]) => {
+        userResult[category] = amount;
+      });
+      
+      return userResult;
     });
     
     // Sort by amount in descending order
-    return result.sort((a, b) => b.amount - a.amount);
+    return {
+      users: result.sort((a, b) => b.amount - a.amount),
+      categories: Array.from(allCategories)
+    };
   }, [currentMonthData, familyMembers]);
   
   // Calculate total expenses
   const totalExpenses = useMemo(() => {
-    return expensesByUser.reduce((sum, item) => sum + item.amount, 0);
+    return expensesByUser.users.reduce((sum, item) => sum + item.amount, 0);
   }, [expensesByUser]);
   
   // Generate pie chart colors
@@ -120,7 +155,7 @@ export function ExpensesByUser({
   };
 
   // Calculate percentage for each user
-  const dataWithPercentage = expensesByUser.map(item => ({
+  const dataWithPercentage = expensesByUser.users.map(item => ({
     ...item,
     percentage: totalExpenses > 0 ? (item.amount / totalExpenses) * 100 : 0
   }));
@@ -183,7 +218,7 @@ export function ExpensesByUser({
             </ResponsiveContainer>
           </div>
           
-          {/* Bar Chart Section */}
+          {/* Bar Chart Section with Category Split */}
           <div className="w-full md:w-1/2 h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
@@ -200,13 +235,50 @@ export function ExpensesByUser({
                   tick={{ fontSize: 12 }}
                 />
                 <Tooltip
-                  formatter={(value: number) => [formatCurrency(value), 'Amount']}
+                  formatter={(value: number, name: string) => {
+                    // Format name to be more readable
+                    const formattedName = name === 'amount' 
+                      ? 'Total Amount'
+                      : name;
+                    
+                    return [formatCurrency(value), formattedName];
+                  }}
                   labelFormatter={(value) => `${value}`}
                 />
+                <Legend />
+                
+                {/* Add stacked bars for each expense category */}
+                {expensesByUser.categories.map((category, categoryIndex) => {
+                  const categoryColor = [
+                    '#f87171', // red
+                    '#fb923c', // orange
+                    '#fbbf24', // amber
+                    '#a3e635', // lime
+                    '#34d399', // emerald
+                    '#22d3ee', // cyan
+                    '#818cf8', // indigo
+                    '#c084fc', // purple
+                    '#f472b6', // pink
+                  ];
+                  
+                  const colorIndex = categoryIndex % categoryColor.length;
+                  
+                  return (
+                    <Bar 
+                      key={category}
+                      dataKey={category}
+                      name={category}
+                      stackId="stack1"
+                      fill={categoryColor[colorIndex]}
+                    />
+                  );
+                })}
+                
+                {/* Add a transparent bar at the end with the label */}
                 <Bar 
                   dataKey="amount" 
-                  fill="#3b82f6"
-                  name="Expense Amount"
+                  name="Total Amount"
+                  fill="none"
                   label={{
                     position: 'right',
                     formatter: (value: number) => formatCurrency(value),
@@ -215,7 +287,7 @@ export function ExpensesByUser({
                   }}
                 >
                   {dataWithPercentage.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell key={`cell-${index}`} fill="none" />
                   ))}
                 </Bar>
               </BarChart>
