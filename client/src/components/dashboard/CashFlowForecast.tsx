@@ -23,15 +23,19 @@ export function CashFlowForecast({ transactions, accounts, isLoading }: CashFlow
     // Start with current account balances
     let currentBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
     
+    // Track cumulative income and expenses for trending
+    let cumulativeIncome = 0;
+    let cumulativeExpenses = 0;
+    
     // Create data points for each day
     for (let i = 0; i <= 30; i++) {
       const date = addDays(today, i);
       
       // Find recurring transactions due on this date
-      const dayTransactions = transactions.filter(tx => {
+      const dayRecurringTransactions = transactions.filter(tx => {
         if (!tx.isRecurring) return false;
         
-        const txDate = parseISO(tx.date.toString());
+        const txDate = tx.date instanceof Date ? tx.date : parseISO(String(tx.date));
         
         if (tx.frequency === 'Monthly' && tx.frequencyDay) {
           // Monthly recurring on specific day
@@ -43,7 +47,7 @@ export function CashFlowForecast({ transactions, accounts, isLoading }: CashFlow
           // Custom recurring on interval
           const interval = tx.frequencyCustomDays;
           const daysSinceStart = Math.floor((date.getTime() - txDate.getTime()) / (1000 * 60 * 60 * 24));
-          return daysSinceStart % interval === 0;
+          return daysSinceStart % interval === 0 && daysSinceStart >= 0;
         }
         
         return false;
@@ -52,12 +56,18 @@ export function CashFlowForecast({ transactions, accounts, isLoading }: CashFlow
       // Find one-time transactions scheduled for this date
       const oneTimeTransactions = transactions.filter(tx => {
         if (tx.isRecurring) return false;
-        const txDate = parseISO(tx.date.toString());
-        return isSameDay(date, txDate) && date >= today;
+        
+        try {
+          const txDate = tx.date instanceof Date ? tx.date : parseISO(String(tx.date));
+          return isSameDay(date, txDate) && date >= today;
+        } catch (err) {
+          console.error("Error parsing one-time transaction date:", tx, err);
+          return false;
+        }
       });
       
       // Combine all transactions for this day
-      const allDayTransactions = [...dayTransactions, ...oneTimeTransactions];
+      const allDayTransactions = [...dayRecurringTransactions, ...oneTimeTransactions];
       
       // Calculate day's income and expenses
       const dayIncome = allDayTransactions
@@ -71,12 +81,30 @@ export function CashFlowForecast({ transactions, accounts, isLoading }: CashFlow
       // Update running balance
       currentBalance += (dayIncome - dayExpenses);
       
-      // Add data point
+      // Track cumulative totals for trending visualization
+      cumulativeIncome += dayIncome;
+      cumulativeExpenses += dayExpenses;
+      
+      // Calculate projected recurring income and expenses for smoothed trend line
+      // This helps visualize recurring transaction trends even on days without transactions
+      const avgDailyIncome = i === 0 ? 0 : cumulativeIncome / (i + 1);
+      const avgDailyExpense = i === 0 ? 0 : cumulativeExpenses / (i + 1);
+      
+      // Create cumulative trend lines that show expected values over time
+      const displayIncome = i === 0 ? dayIncome : (dayIncome > 0 ? dayIncome : avgDailyIncome * 0.5);
+      const displayExpenses = i === 0 ? dayExpenses : (dayExpenses > 0 ? dayExpenses : avgDailyExpense * 0.5);
+      
+      // Add data point with all calculated values
       data.push({
         date: format(date, 'MMM dd'),
         balance: currentBalance,
-        income: dayIncome,
-        expenses: dayExpenses,
+        income: displayIncome,
+        expenses: displayExpenses,
+        // Save actual values for tooltip display
+        actualIncome: dayIncome,
+        actualExpenses: dayExpenses,
+        // Include transaction count for the day
+        transactionCount: allDayTransactions.length
       });
     }
     
@@ -111,9 +139,44 @@ export function CashFlowForecast({ transactions, accounts, isLoading }: CashFlow
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
                 <YAxis tickFormatter={(value) => `$${value}`} />
-                <Tooltip 
-                  formatter={(value) => formatCurrency(value as number)} 
-                  labelFormatter={(label) => `Date: ${label}`}
+                <Tooltip
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      const dataPoint = payload[0].payload;
+                      return (
+                        <div className="bg-white p-3 border rounded-md shadow-md">
+                          <p className="font-medium mb-1">{label}</p>
+                          <div className="text-sm space-y-1">
+                            <p className="text-[#7F5539]">
+                              <span className="font-medium">Balance:</span> {formatCurrency(dataPoint.balance)}
+                            </p>
+                            <p className="text-green-500">
+                              <span className="font-medium">Income:</span> {formatCurrency(dataPoint.actualIncome)}
+                              {dataPoint.transactionCount > 0 && dataPoint.actualIncome > 0 && (
+                                <span className="ml-1 text-xs text-gray-500">
+                                  (Transactions)
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-red-500">
+                              <span className="font-medium">Expenses:</span> {formatCurrency(dataPoint.actualExpenses)}
+                              {dataPoint.transactionCount > 0 && dataPoint.actualExpenses > 0 && (
+                                <span className="ml-1 text-xs text-gray-500">
+                                  (Transactions)
+                                </span>
+                              )}
+                            </p>
+                            {dataPoint.transactionCount > 0 && (
+                              <p className="text-gray-500 text-xs">
+                                {dataPoint.transactionCount} transaction{dataPoint.transactionCount !== 1 ? 's' : ''} on this day
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
                 />
                 <Legend />
                 <Line
@@ -123,6 +186,24 @@ export function CashFlowForecast({ transactions, accounts, isLoading }: CashFlow
                   strokeWidth={2}
                   activeDot={{ r: 8 }}
                   name="Projected Balance"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="income"
+                  stroke="#10B981"
+                  strokeWidth={1.5}
+                  strokeDasharray="5 5"
+                  dot={{ r: 3 }}
+                  name="Expected Income"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="expenses"
+                  stroke="#EF4444"
+                  strokeWidth={1.5}
+                  strokeDasharray="5 5"
+                  dot={{ r: 3 }}
+                  name="Expected Expenses"
                 />
               </LineChart>
             </ResponsiveContainer>

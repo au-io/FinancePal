@@ -14,28 +14,81 @@ interface TransactionCalendarProps {
 export function TransactionCalendar({ transactions, isLoading }: TransactionCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   
-  // Get transactions for the selected date
+  // Get transactions for the selected date (including recurring ones)
   const dayTransactions = React.useMemo(() => {
     try {
       if (!transactions || !selectedDate) return [];
       
-      return transactions.filter(tx => {
+      // Get one-time transactions on the selected date
+      const oneTimeTransactions = transactions.filter(tx => {
         if (!tx || !tx.date) return false;
         
         try {
+          // Only include non-recurring transactions matching the exact date
+          if (tx.isRecurring) return false;
+          
           const txDate = tx.date instanceof Date ? tx.date : parseISO(String(tx.date));
           return isSameDay(txDate, selectedDate);
         } catch (err) {
           console.error("Error parsing transaction date:", tx.date, err);
           return false;
         }
-      }).sort((a, b) => {
+      });
+      
+      // Get recurring transactions that would occur on the selected date
+      const recurringTransactions = transactions.filter(tx => {
+        if (!tx || !tx.date || !tx.isRecurring) return false;
+        
         try {
-          const dateA = new Date(a.date).getTime();
-          const dateB = new Date(b.date).getTime();
-          return dateB - dateA; // Sort by date descending
+          const txDate = tx.date instanceof Date ? tx.date : parseISO(String(tx.date));
+          
+          // Check if the recurring transaction occurs on the selected date
+          if (tx.frequency === 'Monthly' && tx.frequencyDay) {
+            // Monthly on a specific day
+            return selectedDate.getDate() === tx.frequencyDay;
+          } else if (tx.frequency === 'Yearly') {
+            // Yearly on the same date
+            return selectedDate.getDate() === txDate.getDate() && 
+                   selectedDate.getMonth() === txDate.getMonth();
+          } else if (tx.frequency === 'Custom' && tx.frequencyCustomDays) {
+            // Custom days interval
+            const daysDiff = Math.floor(
+              (selectedDate.getTime() - txDate.getTime()) / (1000 * 60 * 60 * 24)
+            );
+            return daysDiff % tx.frequencyCustomDays === 0 && daysDiff >= 0;
+          }
+          
+          return false;
         } catch (err) {
-          console.error("Error sorting transactions by date:", err);
+          console.error("Error processing recurring transaction:", tx, err);
+          return false;
+        }
+      });
+      
+      // Combine and sort all transactions
+      return [...oneTimeTransactions, ...recurringTransactions].sort((a, b) => {
+        try {
+          // Mark recurring transactions with an indicator in the description
+          if (a.isRecurring && !a.description?.includes('(Recurring)')) {
+            a.description = a.description ? `${a.description} (Recurring)` : 'Recurring Transaction';
+          }
+          if (b.isRecurring && !b.description?.includes('(Recurring)')) {
+            b.description = b.description ? `${b.description} (Recurring)` : 'Recurring Transaction';
+          }
+          
+          // Sort by transaction type (Income first, then Expense, then Transfer)
+          const typeOrder = { 'Income': 0, 'Expense': 1, 'Transfer': 2 };
+          const typeA = typeOrder[a.type as keyof typeof typeOrder] || 3;
+          const typeB = typeOrder[b.type as keyof typeof typeOrder] || 3;
+          
+          if (typeA !== typeB) {
+            return typeA - typeB;
+          }
+          
+          // Then sort by amount (descending)
+          return b.amount - a.amount;
+        } catch (err) {
+          console.error("Error sorting transactions:", err);
           return 0;
         }
       });
@@ -71,7 +124,7 @@ export function TransactionCalendar({ transactions, isLoading }: TransactionCale
     }
   }, [dayTransactions]);
 
-  // Generate calendar day modifiers to highlight days with transactions
+  // Generate calendar day modifiers to highlight days with transactions (including recurring ones)
   const dayWithTransactionsModifier = React.useMemo(() => {
     try {
       if (!transactions || !Array.isArray(transactions)) return {
@@ -84,9 +137,10 @@ export function TransactionCalendar({ transactions, isLoading }: TransactionCale
       const daysWithExpenses = new Set<string>();
       const daysWithBoth = new Set<string>();
       
+      // Process one-time transactions
       transactions.forEach(tx => {
         try {
-          if (!tx || !tx.date || !tx.type) return;
+          if (!tx || !tx.date || !tx.type || tx.isRecurring) return;
           
           const txDate = tx.date instanceof Date ? tx.date : parseISO(String(tx.date));
           const dateStr = txDate.toDateString();
@@ -110,6 +164,112 @@ export function TransactionCalendar({ transactions, isLoading }: TransactionCale
           }
         } catch (err) {
           console.error("Error processing transaction date for calendar:", tx, err);
+        }
+      });
+      
+      // Project recurring transactions 90 days into the future
+      const today = new Date();
+      const futureDate = addDays(today, 90);
+      
+      // Process recurring transactions
+      transactions.filter(tx => tx.isRecurring).forEach(tx => {
+        try {
+          if (!tx || !tx.date || !tx.type) return;
+          
+          const startDate = tx.date instanceof Date ? tx.date : parseISO(String(tx.date));
+          
+          // Calculate occurrences based on frequency
+          if (tx.frequency === 'Monthly' && tx.frequencyDay) {
+            // Monthly recurring on a specific day
+            for (let i = 0; i < 3; i++) { // Project for 3 months
+              const occurrenceDate = new Date(today.getFullYear(), today.getMonth() + i, tx.frequencyDay);
+              if (occurrenceDate >= today && occurrenceDate <= futureDate) {
+                const dateStr = occurrenceDate.toDateString();
+                
+                if (tx.type === 'Income') {
+                  if (daysWithExpenses.has(dateStr)) {
+                    daysWithBoth.add(dateStr);
+                    daysWithExpenses.delete(dateStr);
+                    daysWithIncome.delete(dateStr);
+                  } else if (!daysWithBoth.has(dateStr)) {
+                    daysWithIncome.add(dateStr);
+                  }
+                } else if (tx.type === 'Expense') {
+                  if (daysWithIncome.has(dateStr)) {
+                    daysWithBoth.add(dateStr);
+                    daysWithExpenses.delete(dateStr);
+                    daysWithIncome.delete(dateStr);
+                  } else if (!daysWithBoth.has(dateStr)) {
+                    daysWithExpenses.add(dateStr);
+                  }
+                }
+              }
+            }
+          } else if (tx.frequency === 'Yearly') {
+            // Yearly recurring
+            const nextOccurrence = new Date(today.getFullYear(), startDate.getMonth(), startDate.getDate());
+            if (nextOccurrence < today) {
+              nextOccurrence.setFullYear(nextOccurrence.getFullYear() + 1);
+            }
+            
+            if (nextOccurrence <= futureDate) {
+              const dateStr = nextOccurrence.toDateString();
+              
+              if (tx.type === 'Income') {
+                if (daysWithExpenses.has(dateStr)) {
+                  daysWithBoth.add(dateStr);
+                  daysWithExpenses.delete(dateStr);
+                  daysWithIncome.delete(dateStr);
+                } else if (!daysWithBoth.has(dateStr)) {
+                  daysWithIncome.add(dateStr);
+                }
+              } else if (tx.type === 'Expense') {
+                if (daysWithIncome.has(dateStr)) {
+                  daysWithBoth.add(dateStr);
+                  daysWithExpenses.delete(dateStr);
+                  daysWithIncome.delete(dateStr);
+                } else if (!daysWithBoth.has(dateStr)) {
+                  daysWithExpenses.add(dateStr);
+                }
+              }
+            }
+          } else if (tx.frequency === 'Custom' && tx.frequencyCustomDays) {
+            // Custom interval in days
+            const interval = tx.frequencyCustomDays;
+            let nextDate = new Date(startDate);
+            
+            // Find the next occurrence after today
+            while (nextDate < today) {
+              nextDate = addDays(nextDate, interval);
+            }
+            
+            // Project future occurrences within 90 days
+            while (nextDate <= futureDate) {
+              const dateStr = nextDate.toDateString();
+              
+              if (tx.type === 'Income') {
+                if (daysWithExpenses.has(dateStr)) {
+                  daysWithBoth.add(dateStr);
+                  daysWithExpenses.delete(dateStr);
+                  daysWithIncome.delete(dateStr);
+                } else if (!daysWithBoth.has(dateStr)) {
+                  daysWithIncome.add(dateStr);
+                }
+              } else if (tx.type === 'Expense') {
+                if (daysWithIncome.has(dateStr)) {
+                  daysWithBoth.add(dateStr);
+                  daysWithExpenses.delete(dateStr);
+                  daysWithIncome.delete(dateStr);
+                } else if (!daysWithBoth.has(dateStr)) {
+                  daysWithExpenses.add(dateStr);
+                }
+              }
+              
+              nextDate = addDays(nextDate, interval);
+            }
+          }
+        } catch (err) {
+          console.error("Error projecting recurring transaction:", tx, err);
         }
       });
       
