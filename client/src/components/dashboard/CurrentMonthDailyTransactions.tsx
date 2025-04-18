@@ -108,7 +108,7 @@ export function CurrentMonthDailyTransactions({
               date: matchingDay,
               id: -1 * recurringTransactions.length - 1,
               isRecurringInstance: true
-            });
+            } as any);
           }
         }
       }
@@ -131,7 +131,7 @@ export function CurrentMonthDailyTransactions({
               date: new Date(currentDate),
               id: -1 * recurringTransactions.length - 1,
               isRecurringInstance: true
-            });
+            } as any);
           }
         }
       }
