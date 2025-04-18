@@ -131,7 +131,7 @@ export function CashFlowForecast({ transactions, accounts, isLoading }: CashFlow
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="h-[300px] flex items-center justify-center bg-gray-50 rounded-lg animate-pulse" />
+          <div className="h-[400px] flex items-center justify-center bg-gray-50 rounded-lg animate-pulse" />
         ) : forecastData.length === 0 ? (
           <div className="h-[400px] flex items-center justify-center">
             <p className="text-gray-500">Not enough data for forecast</p>
