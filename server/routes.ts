@@ -6,7 +6,8 @@ import {
   insertFamilySchema, 
   insertAccountSchema,
   insertTransactionSchema,
-  transactionTypes
+  transactionTypes,
+  transactionCategories
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -554,14 +555,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/templates/regular-transactions", requireAuth, (req, res) => {
     const today = new Date().toISOString().split('T')[0];
     
-    const csvHeader = "Date,Type,Category,Description,Amount\n";
-    const csvRows = [
+    // Start with a documentation row that explains valid values
+    let csvContent = "# JoBa Finance - Regular Transaction Import Template\n";
+    csvContent += "# Date Format: YYYY-MM-DD (e.g., 2025-04-18)\n";
+    csvContent += "# Type: Income, Expense (synonyms like salary, payment, bill are also supported)\n";
+    csvContent += "# Category: " + transactionCategories.join(", ") + "\n";
+    csvContent += "# Amount: Positive number for Income, Negative number for Expense\n";
+    csvContent += "#\n";
+    
+    // Add header row
+    csvContent += "Date,Type,Category,Description,Amount\n";
+    
+    // Add example rows
+    const exampleRows = [
       `${today},Income,Salary,"Monthly Salary",1500`,
-      `${today},Expense,Groceries,"Weekly groceries",-75.50`,
-      `${today},Expense,Utilities,"Electricity bill",-120`
+      `${today},Income,Business,"Freelance work",800`,
+      `${today},Expense,Food,"Grocery shopping",-85.50`,
+      `${today},Expense,Transportation,"Gas for car",-50.25`,
+      `${today},Expense,Utilities,"Electricity bill",-120`,
+      `${today},Expense,Entertainment,"Movie tickets",-25`
     ];
     
-    const csvContent = csvHeader + csvRows.join("\n");
+    csvContent += exampleRows.join("\n");
     
     // Set headers for file download
     res.setHeader('Content-Type', 'text/csv');
@@ -578,16 +593,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const sourceAccountName = accounts.length > 0 ? accounts[0].name : "Checking Account";
     const destAccountName = accounts.length > 1 ? accounts[1].name : "Savings Account";
     
+    // Get all account names for documentation
+    const accountNames = accounts.map(a => `"${a.name}"`).join(", ");
+    const accountsInfo = accountNames || "You need to create accounts first";
+    
     const today = new Date().toISOString().split('T')[0];
     
-    const csvHeader = "Date,Type,Category,Description,Amount,DestinationAccount\n";
-    const csvRows = [
+    // Start with a documentation row that explains valid values
+    let csvContent = "# JoBa Finance - Transfer Transaction Import Template\n";
+    csvContent += "# Date Format: YYYY-MM-DD (e.g., 2025-04-18)\n";
+    csvContent += "# Type: Must be 'Transfer' (synonyms like send, move are also supported)\n";
+    csvContent += "# DestinationAccount: Must exactly match one of your account names:\n";
+    csvContent += `# Available accounts: ${accountsInfo}\n`;
+    csvContent += "#\n";
+    
+    // Add header row
+    csvContent += "Date,Type,Category,Description,Amount,DestinationAccount\n";
+    
+    // Add example rows
+    const exampleRows = [
       `${today},Transfer,Transfer,"Transfer to savings",100,"${destAccountName}"`,
       `${today},Transfer,Transfer,"Emergency fund transfer",50,"${destAccountName}"`,
       `${today},Transfer,Transfer,"Monthly savings",200,"${destAccountName}"`
     ];
     
-    const csvContent = csvHeader + csvRows.join("\n");
+    csvContent += exampleRows.join("\n");
     
     // Set headers for file download
     res.setHeader('Content-Type', 'text/csv');

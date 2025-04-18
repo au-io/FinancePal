@@ -11,11 +11,126 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { apiRequest, parseCSV, downloadFileFromApi } from '@/lib/queryClient';
-import { Account } from '@shared/schema';
+import { Account, transactionTypes, transactionCategories } from '@shared/schema';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, AlertTriangle, FileText, Upload, Download, ArrowRight } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+// Helper functions for data validation and normalization
+function normalizeTransactionType(type: string): string | null {
+  // Case-insensitive match
+  const normalizedType = type.toLowerCase().trim();
+  
+  // Direct matches
+  if (normalizedType === 'income') return 'Income';
+  if (normalizedType === 'expense') return 'Expense';
+  if (normalizedType === 'transfer') return 'Transfer';
+  
+  // Common synonyms
+  if (['earning', 'salary', 'revenue', 'payment', 'deposit', 'credit'].includes(normalizedType)) {
+    return 'Income';
+  }
+  
+  if (['cost', 'payment', 'purchase', 'bill', 'debit', 'spending', 'paid'].includes(normalizedType)) {
+    return 'Expense';
+  }
+  
+  if (['move', 'send', 'wire', 'transmit', 'moved'].includes(normalizedType)) {
+    return 'Transfer';
+  }
+  
+  // If no match found
+  return null;
+}
+
+function normalizeCategory(category: string): string | null {
+  // Case-insensitive match
+  const normalizedCategory = category.toLowerCase().trim();
+  
+  // Check for exact matches with standard categories
+  for (const standardCategory of transactionCategories) {
+    if (normalizedCategory === standardCategory.toLowerCase()) {
+      return standardCategory;
+    }
+  }
+  
+  // Common category synonyms and variants
+  const categoryMap: Record<string, string> = {
+    'rent': 'Housing',
+    'mortgage': 'Housing',
+    'apartment': 'Housing',
+    'home': 'Housing',
+    'property': 'Housing',
+    
+    'car': 'Transportation',
+    'gas': 'Transportation',
+    'fuel': 'Transportation',
+    'bus': 'Transportation',
+    'train': 'Transportation',
+    'metro': 'Transportation',
+    'taxi': 'Transportation',
+    'uber': 'Transportation',
+    'lyft': 'Transportation',
+    
+    'groceries': 'Food',
+    'restaurant': 'Food',
+    'dining': 'Food',
+    'takeout': 'Food',
+    'lunch': 'Food',
+    'dinner': 'Food',
+    
+    'electric': 'Utilities',
+    'electricity': 'Utilities',
+    'water': 'Utilities',
+    'gas bill': 'Utilities',
+    'internet': 'Utilities',
+    'phone': 'Utilities',
+    'mobile': 'Utilities',
+    
+    'health': 'Healthcare',
+    'doctor': 'Healthcare',
+    'medical': 'Healthcare',
+    'dentist': 'Healthcare',
+    'medicine': 'Healthcare',
+    'pharmacy': 'Healthcare',
+    
+    'movies': 'Entertainment',
+    'music': 'Entertainment',
+    'game': 'Entertainment',
+    'games': 'Entertainment',
+    'streaming': 'Entertainment',
+    'netflix': 'Entertainment',
+    'spotify': 'Entertainment',
+    
+    'college': 'Education',
+    'school': 'Education',
+    'university': 'Education',
+    'course': 'Education',
+    'book': 'Education',
+    'books': 'Education',
+    'tuition': 'Education',
+    
+    'wages': 'Salary',
+    'income': 'Salary',
+    'paycheck': 'Salary',
+    'bonus': 'Salary',
+    'commission': 'Salary',
+    
+    'investment': 'Business',
+    'dividend': 'Business',
+    'profit': 'Business',
+    'interest': 'Business'
+  };
+  
+  // Check for category aliases
+  if (categoryMap[normalizedCategory]) {
+    return categoryMap[normalizedCategory];
+  }
+  
+  // If no match found, return null (will use the original value)
+  return null;
+}
 
 interface ImportTransactionsModalProps {
   isOpen: boolean;
@@ -102,20 +217,44 @@ export function ImportTransactionsModal({
         
         // Convert each row to a transaction
         const transactions = batch.map(row => {
-          // Determine the transaction type
-          const type = row.Type || (parseFloat(row.Amount || '0') >= 0 ? 'Income' : 'Expense');
+          // Get amount and validate
+          const amount = parseFloat(row.Amount || '0');
+          if (isNaN(amount)) {
+            throw new Error(`Invalid amount: "${row.Amount}" in row: ${JSON.stringify(row)}`);
+          }
+          
+          // Determine and validate transaction type
+          let type = row.Type;
+          if (!type) {
+            // Auto-determine type based on amount if not provided
+            type = amount >= 0 ? 'Income' : 'Expense';
+          } else {
+            // Normalize transaction type to match one of the valid types
+            const normalizedType = normalizeTransactionType(type);
+            if (!normalizedType) {
+              throw new Error(`Invalid transaction type: "${type}". Must be one of: Income, Expense, or Transfer.`);
+            }
+            type = normalizedType;
+          }
           
           // Skip transfer transactions without destination accounts
           if (type === 'Transfer' && !row.DestinationAccount) {
             throw new Error(`Transfer transaction requires a destination account. Row: ${JSON.stringify(row)}`);
           }
           
+          // Validate and normalize category
+          let category = row.Category || 'Other';
+          const normalizedCategory = normalizeCategory(category);
+          if (normalizedCategory) {
+            category = normalizedCategory;
+          }
+          
           // Create base transaction object
           const transaction: any = {
             sourceAccountId: parseInt(accountId),
-            amount: parseFloat(row.Amount || '0'),
+            amount: amount,
             type: type,
-            category: row.Category || 'Other',
+            category: category,
             description: row.Description || '',
             date: new Date(row.Date || new Date()).toISOString(),
           };
