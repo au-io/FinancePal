@@ -54,15 +54,29 @@ export function BulkCategoryUpdate({ categories }: BulkCategoryUpdateProps) {
       });
       
       console.log('Response status:', response.status);
+      
+      // Check if the response has a content-type header
+      const contentType = response.headers.get('content-type');
+      console.log('Content-Type:', contentType);
+      
       const responseText = await response.text();
       console.log('Response text:', responseText);
       
+      // Try to clean the response text in case there are any non-JSON characters
+      const cleanedText = responseText.trim();
+      
       let data;
       try {
-        data = JSON.parse(responseText);
+        // Only try to parse if there's actual content
+        if (cleanedText) {
+          data = JSON.parse(cleanedText);
+        } else {
+          throw new Error('Empty response from server');
+        }
       } catch (parseError) {
         console.error('Error parsing JSON response:', parseError);
-        throw new Error('Invalid JSON response from server');
+        console.error('Attempted to parse:', cleanedText);
+        throw new Error(`Invalid JSON response from server: ${cleanedText.substring(0, 100)}`);
       }
       
       if (response.ok) {
@@ -126,6 +140,7 @@ export function BulkCategoryUpdate({ categories }: BulkCategoryUpdateProps) {
         }
       }
       
+      // Make the request
       const response = await fetch('/api/categories/update-transactions', {
         method: 'POST',
         headers: {
@@ -138,11 +153,35 @@ export function BulkCategoryUpdate({ categories }: BulkCategoryUpdateProps) {
         credentials: 'include'
       });
       
+      console.log('Update response status:', response.status);
+      console.log('Response headers:', 
+        Array.from(response.headers.entries())
+          .map(([key, value]) => `${key}: ${value}`)
+          .join(', ')
+      );
+      
+      // Get response as text first
+      const responseText = await response.text();
+      console.log('Update response text:', responseText);
+      
+      let data;
+      try {
+        // Parse the JSON response if there's content
+        if (responseText.trim()) {
+          data = JSON.parse(responseText.trim());
+          console.log('Parsed update response data:', data);
+        }
+      } catch (parseError) {
+        console.error('Error parsing update response:', parseError);
+        throw new Error(`Invalid JSON in update response: ${responseText.substring(0, 100)}`);
+      }
+      
       if (response.ok) {
-        const data = await response.json();
         toast({
           title: "Categories updated",
-          description: `${data.count} transactions were updated from "${sourceCategory}" to "${finalTargetCategory}".`,
+          description: data && data.count 
+            ? `${data.count} transactions were updated from "${sourceCategory}" to "${finalTargetCategory}".`
+            : `Transactions were updated from "${sourceCategory}" to "${finalTargetCategory}".`,
           variant: "default"
         });
         
@@ -153,7 +192,9 @@ export function BulkCategoryUpdate({ categories }: BulkCategoryUpdateProps) {
       } else {
         toast({
           title: "Update failed",
-          description: "Failed to update transactions. Please try again.",
+          description: data && data.message 
+            ? data.message 
+            : "Failed to update transactions. Please try again.",
           variant: "destructive"
         });
       }

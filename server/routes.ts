@@ -675,13 +675,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log(`Total count for category "${category}": ${count}`);
-      res.json({ count });
+      
+      // Set content type explicitly to ensure it's interpreted as JSON
+      res.setHeader('Content-Type', 'application/json');
+      res.send(JSON.stringify({ count }));
     } catch (error) {
       console.error('Error in category count endpoint:', error);
-      res.status(500).json({ 
+      
+      // Set content type explicitly to ensure it's interpreted as JSON
+      res.setHeader('Content-Type', 'application/json');
+      res.status(500).send(JSON.stringify({ 
         error: 'An error occurred while counting transactions',
         message: error instanceof Error ? error.message : 'Unknown error'
-      });
+      }));
     }
   });
   
@@ -739,17 +745,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Successfully updated ${updatedTransactions.length} out of ${affectedTransactions.length} transactions`);
       
-      res.json({ 
+      // Set content type explicitly to ensure it's interpreted as JSON
+      res.setHeader('Content-Type', 'application/json');
+      res.send(JSON.stringify({
         success: true, 
         message: `Updated ${updatedTransactions.length} transactions from category "${oldCategory}" to "${newCategory}"`,
         count: updatedTransactions.length
-      });
+      }));
     } catch (error) {
       console.error('Error in update transactions endpoint:', error);
-      res.status(500).json({ 
+      // Set content type explicitly to ensure it's interpreted as JSON
+      res.setHeader('Content-Type', 'application/json');
+      res.status(500).send(JSON.stringify({ 
         error: 'An error occurred while updating transactions',
         message: error instanceof Error ? error.message : 'Unknown error'
-      });
+      }));
     }
   });
   

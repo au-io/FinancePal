@@ -1,54 +1,85 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { transactionCategories } from '@shared/schema';
+import { useQuery } from '@tanstack/react-query';
 
 // Interface for our context
 type CategoryContextType = {
   customCategories: string[];
-  addCategory: (category: string) => void;
-  removeCategory: (category: string) => void;
+  addCategory: (category: string) => Promise<void>;
+  removeCategory: (category: string) => Promise<void>;
   getAllCategories: () => string[];
 };
 
 // Create the context
 const CategoryContext = createContext<CategoryContextType | null>(null);
 
-// Local storage key
-const STORAGE_KEY = 'joba_custom_categories';
-
 // Provider component
 export function CategoryProvider({ children }: { children: ReactNode }) {
-  // Initialize state from localStorage if available
-  const [customCategories, setCustomCategories] = useState<string[]>(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
+  // Get transactions to extract used categories
+  const [customCategoriesFromTransactions, setCustomCategoriesFromTransactions] = useState<string[]>([]);
+  
+  // Fetch transactions (even if we already have them elsewhere, this keeps categories in sync)
+  const { data: transactions = [] } = useQuery<any[]>({
+    queryKey: ['/api/transactions'],
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  // Save to localStorage when customCategories changes
+  // Extract custom categories from transactions
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(customCategories));
-  }, [customCategories]);
+    if (transactions && transactions.length > 0) {
+      // Get unique categories from transactions that aren't in the base categories
+      const uniqueCategories = [...new Set(transactions.map(tx => tx.category))];
+      const customCats = uniqueCategories.filter(
+        cat => !transactionCategories.includes(cat as any)
+      );
+      setCustomCategoriesFromTransactions(customCats);
+    }
+  }, [transactions]);
 
   // Add a new category
-  const addCategory = (category: string) => {
+  const addCategory = async (category: string): Promise<void> => {
     const trimmedCategory = category.trim();
     if (!trimmedCategory) return;
     
     // Check if it already exists
     if (
-      transactionCategories.some(cat => cat === trimmedCategory) || 
-      customCategories.includes(trimmedCategory)
+      transactionCategories.includes(trimmedCategory as any) || 
+      customCategoriesFromTransactions.includes(trimmedCategory)
     ) {
       return;
     }
     
-    setCustomCategories(prev => [...prev, trimmedCategory]);
+    // Create the category on the server - will be used with the first transaction
+    try {
+      const response = await fetch('/api/categories', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: trimmedCategory }),
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        // Add to local state to avoid refetching
+        setCustomCategoriesFromTransactions(prev => [...prev, trimmedCategory]);
+      }
+    } catch (error) {
+      console.error('Error adding category:', error);
+    }
   };
 
   // Remove a category and update associated transactions
-  const removeCategory = async (category: string) => {
+  const removeCategory = async (category: string): Promise<void> => {
     try {
+      // Don't allow removing default categories
+      if (transactionCategories.includes(category as any)) {
+        console.error('Cannot remove default category');
+        return;
+      }
+      
       // Update all transactions with this category to use "Other"
-      await fetch('/api/categories/update-transactions', {
+      const response = await fetch('/api/categories/update-transactions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -60,24 +91,26 @@ export function CategoryProvider({ children }: { children: ReactNode }) {
         credentials: 'include'
       });
       
-      // Then remove the category
-      setCustomCategories(prev => prev.filter(cat => cat !== category));
+      if (response.ok) {
+        // Remove from local state
+        setCustomCategoriesFromTransactions(prev => 
+          prev.filter(cat => cat !== category)
+        );
+      }
     } catch (error) {
       console.error('Error updating transactions for deleted category:', error);
-      // Still remove the category from the list even if transaction update fails
-      setCustomCategories(prev => prev.filter(cat => cat !== category));
     }
   };
 
   // Get all categories (system + custom)
   const getAllCategories = (): string[] => {
-    return [...transactionCategories, ...customCategories];
+    return [...transactionCategories, ...customCategoriesFromTransactions];
   };
 
   return (
     <CategoryContext.Provider 
       value={{ 
-        customCategories, 
+        customCategories: customCategoriesFromTransactions, 
         addCategory, 
         removeCategory,
         getAllCategories,
