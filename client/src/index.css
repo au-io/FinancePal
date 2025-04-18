@@ -2,36 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Hide debug element labels that start with account_ or credit_ 
-   This requires very aggressive CSS to override Replit's debug display */
-*[id^="account_"],
-*[id^="account_balance"],
-*[id^="credit_"],
-*[id^="credit_card"] {
-  display: none !important;
-  position: absolute !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-  height: 0 !important;
-  width: 0 !important;
-  overflow: hidden !important;
-  clip: rect(0 0 0 0) !important;
-  -webkit-clip-path: inset(50%) !important;
-  clip-path: inset(50%) !important;
-  white-space: nowrap !important;
-  opacity: 0 !important;
-  z-index: -9999 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  font-size: 0 !important;
-  line-height: 0 !important;
+/* Global rule to hide ALL debug elements in accounts section */
+.account-list-container {
+  position: relative;
 }
 
-/* Hide the default account row class */
-.account-row span,
-.account-row div {
-  position: relative !important;
-  z-index: 100 !important;
+.account-list-container div[id],
+.account-list-container span[id] {
+  display: none !important;
+}
+
+/* Create clean account rows with good spacing */
+.account-list-container > div {
+  background-color: white;
+  position: relative;
+  margin-bottom: 0.5rem;
+}
+
+/* Hide debug element labels with account_ anywhere in the id */
+*[id*="account_"],
+*[id*="credit_"] {
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  visibility: hidden !important;
+  max-height: 0 !important;
+  max-width: 0 !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  z-index: -100 !important;
 }
 
 @layer base {
