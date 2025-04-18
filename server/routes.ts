@@ -292,6 +292,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         transactionData.date = new Date(transactionData.date);
       }
       
+      // Convert recurring end date string to Date object if it's a string
+      if (transactionData.recurringEndDate && typeof transactionData.recurringEndDate === 'string') {
+        transactionData.recurringEndDate = new Date(transactionData.recurringEndDate);
+      }
+      
       // Validate transaction data
       const parsedData = insertTransactionSchema.parse(transactionData);
       
@@ -474,6 +479,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedData = { ...req.body };
       if (updatedData.date && typeof updatedData.date === 'string') {
         updatedData.date = new Date(updatedData.date);
+      }
+      
+      // Handle recurring end date conversion if present
+      if (updatedData.recurringEndDate && typeof updatedData.recurringEndDate === 'string') {
+        updatedData.recurringEndDate = new Date(updatedData.recurringEndDate);
       }
       
       // Ensure we don't override the userId with a blank value from the client
