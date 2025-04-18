@@ -20,28 +20,41 @@ interface CategoryExpenseForecastProps {
   isLoading: boolean;
 }
 
-// Generate consistent colors for each category
+// Generate visually distinct colors for each category
 const categoryColors: Record<string, string> = {};
 const baseColors = [
-  '#2563EB', // Blue
-  '#DB2777', // Pink
-  '#16A34A', // Green
-  '#9333EA', // Purple
-  '#EAB308', // Yellow
-  '#EC4899', // Pink
-  '#84CC16', // Lime
-  '#14B8A6', // Teal
-  '#F97316', // Orange
-  '#8B5CF6', // Violet
-  '#06B6D4', // Cyan
+  '#3B82F6', // Blue
   '#EF4444', // Red
   '#10B981', // Emerald
-  '#6366F1', // Indigo
+  '#8B5CF6', // Purple
   '#F59E0B', // Amber
-  '#6B7280', // Gray
+  '#EC4899', // Pink
+  '#14B8A6', // Teal
+  '#F97316', // Orange
+  '#22C55E', // Green
+  '#6366F1', // Indigo
+  '#06B6D4', // Cyan
+  '#A855F7', // Violet
+  '#84CC16', // Lime
+  '#D946EF', // Fuchsia
+  '#64748B', // Slate
+  '#B45309', // Amber dark
+  '#075985', // Sky dark
+  '#BE185D', // Pink dark
+  '#b91c1c', // Red dark
+  '#1E3A8A', // Blue dark
+  '#5B21B6', // Purple dark
+  '#115E59', // Teal dark
+  '#166534', // Green dark
+  '#7C2D12', // Orange dark
+  '#581C87', // Violet dark
+  '#0F766E', // Cyan dark
+  '#374151', // Gray dark
 ];
 
 // Assign colors to categories
+// Ensure each category gets a unique and distinctive color
+// We have more colors than categories to ensure good variety
 [...transactionCategories, 'Other'].forEach((category, index) => {
   categoryColors[category] = baseColors[index % baseColors.length];
 });
