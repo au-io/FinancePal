@@ -134,8 +134,65 @@ export class DatabaseStorage implements IStorage {
 
   // Transaction management
   async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
-    const [transaction] = await db.insert(transactions).values(insertTransaction).returning();
-    return transaction;
+    const { sourceAccountId, destinationAccountId, type, amount } = insertTransaction;
+    
+    // Start a transaction to ensure atomicity
+    return await db.transaction(async (tx) => {
+      // Insert the transaction first
+      const [transaction] = await tx.insert(transactions).values(insertTransaction).returning();
+      
+      // Now update the account balances based on transaction type
+      const sourceAccount = await tx
+        .select()
+        .from(accounts)
+        .where(eq(accounts.id, sourceAccountId))
+        .then(res => res[0]);
+      
+      if (!sourceAccount) {
+        throw new Error("Source account not found");
+      }
+      
+      if (type === "Income") {
+        // For income, add to source account
+        await tx
+          .update(accounts)
+          .set({ balance: sourceAccount.balance + amount })
+          .where(eq(accounts.id, sourceAccountId));
+      } 
+      else if (type === "Expense") {
+        // For expense, subtract from source account
+        await tx
+          .update(accounts)
+          .set({ balance: sourceAccount.balance - amount })
+          .where(eq(accounts.id, sourceAccountId));
+      } 
+      else if (type === "Transfer" && destinationAccountId) {
+        // For transfer, subtract from source and add to destination
+        const destAccount = await tx
+          .select()
+          .from(accounts)
+          .where(eq(accounts.id, destinationAccountId))
+          .then(res => res[0]);
+        
+        if (!destAccount) {
+          throw new Error("Destination account not found");
+        }
+        
+        // Update source account (decrease balance)
+        await tx
+          .update(accounts)
+          .set({ balance: sourceAccount.balance - amount })
+          .where(eq(accounts.id, sourceAccountId));
+        
+        // Update destination account (increase balance)
+        await tx
+          .update(accounts)
+          .set({ balance: destAccount.balance + amount })
+          .where(eq(accounts.id, destinationAccountId));
+      }
+      
+      return transaction;
+    });
   }
 
   async getTransaction(id: number): Promise<Transaction | undefined> {
@@ -180,17 +237,224 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateTransaction(id: number, transactionData: Partial<Transaction>): Promise<Transaction | undefined> {
-    const [updatedTransaction] = await db
-      .update(transactions)
-      .set(transactionData)
-      .where(eq(transactions.id, id))
-      .returning();
-    return updatedTransaction;
+    // First get the original transaction to compare changes
+    const originalTransaction = await this.getTransaction(id);
+    if (!originalTransaction) {
+      return undefined;
+    }
+    
+    return await db.transaction(async (tx) => {
+      // Update the transaction first
+      const [updatedTransaction] = await tx
+        .update(transactions)
+        .set(transactionData)
+        .where(eq(transactions.id, id))
+        .returning();
+      
+      if (!updatedTransaction) {
+        return undefined;
+      }
+      
+      // If amount, type, source, or destination changed, we need to update account balances
+      const amountChanged = transactionData.amount !== undefined && 
+                           transactionData.amount !== originalTransaction.amount;
+      const typeChanged = transactionData.type !== undefined && 
+                         transactionData.type !== originalTransaction.type;
+      const sourceChanged = transactionData.sourceAccountId !== undefined && 
+                          transactionData.sourceAccountId !== originalTransaction.sourceAccountId;
+      const destChanged = transactionData.destinationAccountId !== undefined && 
+                         transactionData.destinationAccountId !== originalTransaction.destinationAccountId;
+      
+      if (amountChanged || typeChanged || sourceChanged || destChanged) {
+        // First, reverse the effects of the original transaction
+        const { sourceAccountId: origSourceId, destinationAccountId: origDestId, 
+                type: origType, amount: origAmount } = originalTransaction;
+                
+        // Get original source account
+        let origSourceAccount;
+        try {
+          origSourceAccount = await tx
+            .select()
+            .from(accounts)
+            .where(eq(accounts.id, origSourceId))
+            .then(res => res[0]);
+        } catch (error) {
+          console.error("Original source account not found", error);
+        }
+        
+        if (origSourceAccount) {
+          if (origType === "Income") {
+            // Reverse: subtract the original amount from the original source account
+            await tx
+              .update(accounts)
+              .set({ balance: origSourceAccount.balance - origAmount })
+              .where(eq(accounts.id, origSourceId));
+          } 
+          else if (origType === "Expense") {
+            // Reverse: add the original amount back to the original source account
+            await tx
+              .update(accounts)
+              .set({ balance: origSourceAccount.balance + origAmount })
+              .where(eq(accounts.id, origSourceId));
+          } 
+          else if (origType === "Transfer" && origDestId) {
+            // Reverse: add back to original source and subtract from original destination
+            let origDestAccount;
+            try {
+              origDestAccount = await tx
+                .select()
+                .from(accounts)
+                .where(eq(accounts.id, origDestId))
+                .then(res => res[0]);
+            } catch (error) {
+              console.error("Original destination account not found", error);
+            }
+            
+            if (origDestAccount) {
+              // Update original source account (increase balance)
+              await tx
+                .update(accounts)
+                .set({ balance: origSourceAccount.balance + origAmount })
+                .where(eq(accounts.id, origSourceId));
+              
+              // Update original destination account (decrease balance)
+              await tx
+                .update(accounts)
+                .set({ balance: origDestAccount.balance - origAmount })
+                .where(eq(accounts.id, origDestId));
+            }
+          }
+        }
+        
+        // Now apply the effects of the updated transaction
+        const { sourceAccountId: newSourceId, destinationAccountId: newDestId, 
+                type: newType, amount: newAmount } = updatedTransaction;
+        
+        // Get new source account
+        const newSourceAccount = await tx
+          .select()
+          .from(accounts)
+          .where(eq(accounts.id, newSourceId))
+          .then(res => res[0]);
+        
+        if (!newSourceAccount) {
+          throw new Error("New source account not found");
+        }
+        
+        if (newType === "Income") {
+          // Apply: add the new amount to the new source account
+          await tx
+            .update(accounts)
+            .set({ balance: newSourceAccount.balance + newAmount })
+            .where(eq(accounts.id, newSourceId));
+        } 
+        else if (newType === "Expense") {
+          // Apply: subtract the new amount from the new source account
+          await tx
+            .update(accounts)
+            .set({ balance: newSourceAccount.balance - newAmount })
+            .where(eq(accounts.id, newSourceId));
+        } 
+        else if (newType === "Transfer" && newDestId) {
+          // Apply: subtract from new source and add to new destination
+          const newDestAccount = await tx
+            .select()
+            .from(accounts)
+            .where(eq(accounts.id, newDestId))
+            .then(res => res[0]);
+          
+          if (!newDestAccount) {
+            throw new Error("New destination account not found");
+          }
+          
+          // Update new source account (decrease balance)
+          await tx
+            .update(accounts)
+            .set({ balance: newSourceAccount.balance - newAmount })
+            .where(eq(accounts.id, newSourceId));
+          
+          // Update new destination account (increase balance)
+          await tx
+            .update(accounts)
+            .set({ balance: newDestAccount.balance + newAmount })
+            .where(eq(accounts.id, newDestId));
+        }
+      }
+      
+      return updatedTransaction;
+    });
   }
 
   async deleteTransaction(id: number): Promise<boolean> {
-    const deleted = await db.delete(transactions).where(eq(transactions.id, id)).returning();
-    return deleted.length > 0;
+    // Get the transaction first to know how to update account balances
+    const transaction = await this.getTransaction(id);
+    if (!transaction) {
+      return false;
+    }
+    
+    return await db.transaction(async (tx) => {
+      // Delete the transaction
+      const deleted = await tx.delete(transactions).where(eq(transactions.id, id)).returning();
+      
+      if (deleted.length === 0) {
+        return false;
+      }
+      
+      const { sourceAccountId, destinationAccountId, type, amount } = transaction;
+      
+      // Get source account
+      const sourceAccount = await tx
+        .select()
+        .from(accounts)
+        .where(eq(accounts.id, sourceAccountId))
+        .then(res => res[0]);
+      
+      if (!sourceAccount) {
+        throw new Error("Source account not found");
+      }
+      
+      // Reverse the account balance changes based on transaction type
+      if (type === "Income") {
+        // For income, subtract from source account
+        await tx
+          .update(accounts)
+          .set({ balance: sourceAccount.balance - amount })
+          .where(eq(accounts.id, sourceAccountId));
+      } 
+      else if (type === "Expense") {
+        // For expense, add back to source account
+        await tx
+          .update(accounts)
+          .set({ balance: sourceAccount.balance + amount })
+          .where(eq(accounts.id, sourceAccountId));
+      } 
+      else if (type === "Transfer" && destinationAccountId) {
+        // For transfer, add back to source and subtract from destination
+        const destAccount = await tx
+          .select()
+          .from(accounts)
+          .where(eq(accounts.id, destinationAccountId))
+          .then(res => res[0]);
+        
+        if (!destAccount) {
+          throw new Error("Destination account not found");
+        }
+        
+        // Update source account (increase balance)
+        await tx
+          .update(accounts)
+          .set({ balance: sourceAccount.balance + amount })
+          .where(eq(accounts.id, sourceAccountId));
+        
+        // Update destination account (decrease balance)
+        await tx
+          .update(accounts)
+          .set({ balance: destAccount.balance - amount })
+          .where(eq(accounts.id, destinationAccountId));
+      }
+      
+      return true;
+    });
   }
 
   // For initial admin creation
