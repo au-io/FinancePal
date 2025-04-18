@@ -77,7 +77,7 @@ export function AccountModal({
         category: editingAccount.category,
         icon: editingAccount.icon,
         balance: editingAccount.balance,
-        userId: 0, // Will be set by the server
+        userId: editingAccount.userId, // Preserve the original userId
       });
     } else {
       form.reset({
@@ -85,7 +85,7 @@ export function AccountModal({
         category: accountCategories[0],
         icon: accountIcons[0],
         balance: 0,
-        userId: 0,
+        userId: 0, // Will be set by the server for new accounts
       });
     }
   }, [editingAccount, form]);
