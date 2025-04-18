@@ -15,6 +15,7 @@ import { Loader2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TransactionCalendar } from '@/components/dashboard/TransactionCalendar';
 import { CashFlowForecast } from '@/components/dashboard/CashFlowForecast';
+import { CurrentMonthDailyTransactions } from '@/components/dashboard/CurrentMonthDailyTransactions';
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -165,6 +166,13 @@ export default function Dashboard() {
           </div>
           
           {/* Main Dashboard Content */}
+          <div className="mb-6">
+            <CurrentMonthDailyTransactions
+              transactions={transactions || []}
+              isLoading={isLoading}
+            />
+          </div>
+          
           <MonthlyOverview 
             transactions={transactions || []} 
             isLoading={isLoading} 
