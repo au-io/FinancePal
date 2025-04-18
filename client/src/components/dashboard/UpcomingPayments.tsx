@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Transaction } from '@shared/schema';
+import { Transaction, Account } from '@shared/schema';
 import { DataTable } from '@/components/ui/data-table';
 import { format, addMonths, addYears, addDays, isFuture, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Edit } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 
 interface UpcomingPaymentsProps {
   transactions: Transaction[];
@@ -13,6 +14,11 @@ interface UpcomingPaymentsProps {
 }
 
 export function UpcomingPayments({ transactions, isLoading, onEditTransaction }: UpcomingPaymentsProps) {
+  // Fetch accounts for displaying account names
+  const { data: accounts } = useQuery<Account[]>({
+    queryKey: ['/api/accounts'],
+  });
+  
   // Get recurring transactions and calculate their next occurrence
   const upcomingPayments = useMemo(() => {
     if (!transactions.length) return [];
@@ -44,18 +50,26 @@ export function UpcomingPayments({ transactions, isLoading, onEditTransaction }:
             nextDate = addMonths(lastDate, 1);
         }
         
+        // Find account name
+        const account = accounts?.find(a => a.id === t.sourceAccountId);
+        const accountName = account ? account.name : `Account ${t.sourceAccountId}`;
+        
         // Only include future payments
         if (isFuture(nextDate)) {
           return {
             ...t,
-            nextDate
+            nextDate,
+            accountName
           };
         }
         return null;
       })
       .filter(Boolean)
-      .sort((a, b) => a.nextDate.getTime() - b.nextDate.getTime());
-  }, [transactions]);
+      .sort((a, b) => {
+        if (!a || !b) return 0;
+        return a.nextDate.getTime() - b.nextDate.getTime();
+      });
+  }, [transactions, accounts]);
 
   const columns = [
     {
@@ -72,7 +86,7 @@ export function UpcomingPayments({ transactions, isLoading, onEditTransaction }:
     },
     {
       header: 'Account',
-      accessor: 'sourceAccountId',
+      accessor: (tx: any) => tx.accountName || `Account ${tx.sourceAccountId}`,
     },
     {
       header: 'Next Date',
@@ -80,7 +94,7 @@ export function UpcomingPayments({ transactions, isLoading, onEditTransaction }:
     },
     {
       header: 'Frequency',
-      accessor: 'frequency',
+      accessor: (tx: any) => tx.frequency || 'One-Time',
     },
     {
       header: '',
@@ -130,7 +144,26 @@ export function UpcomingPayments({ transactions, isLoading, onEditTransaction }:
           <DataTable
             data={upcomingPayments}
             columns={columns}
-            onRowClick={(tx) => onEditTransaction(tx)}
+            onRowClick={(tx) => {
+              if (tx) {
+                const transaction = {
+                  id: tx.id,
+                  sourceAccountId: tx.sourceAccountId,
+                  destinationAccountId: tx.destinationAccountId,
+                  userId: tx.userId,
+                  amount: tx.amount,
+                  type: tx.type,
+                  category: tx.category,
+                  description: tx.description,
+                  date: tx.date,
+                  isRecurring: tx.isRecurring,
+                  frequency: tx.frequency,
+                  frequencyDay: tx.frequencyDay,
+                  frequencyCustomDays: tx.frequencyCustomDays
+                };
+                onEditTransaction(transaction as Transaction);
+              }
+            }}
           />
         )}
       </CardContent>
