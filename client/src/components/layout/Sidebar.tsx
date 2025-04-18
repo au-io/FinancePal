@@ -143,9 +143,31 @@ export function Sidebar() {
           </div>
           
           {/* Logo */}
-          <div className="hidden md:block mb-8">
+          <div className="hidden md:block mb-6">
             <LogoWithText size="medium" withSubtitle={true} />
           </div>
+          
+          {/* User Profile - Moved to top */}
+          {user && (
+            <div className="mb-6 pb-4 border-b border-gray-200">
+              <div className="flex items-center">
+                <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center">
+                  <span>{user.name.charAt(0)}</span>
+                </div>
+                <div className="ml-3">
+                  <p className="font-medium">{user.name}</p>
+                  <p className="text-xs text-gray-500">{user.email}</p>
+                </div>
+              </div>
+              <div className="mt-3">
+                <SidebarLink 
+                  href="/profile" 
+                  label="My Profile" 
+                  icon={<User className="h-5 w-5 mr-3" />} 
+                />
+              </div>
+            </div>
+          )}
           
           {/* Navigation */}
           <nav className="space-y-1 flex-1">
@@ -176,43 +198,18 @@ export function Sidebar() {
             )}
           </nav>
           
-          {/* User Profile */}
+          {/* Sign Out Button - Kept at bottom */}
           {user && (
             <div className="mt-auto pt-4 border-t border-gray-200">
-              <div className="flex items-center">
-                <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center">
-                  <span>{user.name.charAt(0)}</span>
-                </div>
-                <div className="ml-3">
-                  <p className="font-medium">{user.name}</p>
-                  <p className="text-xs text-gray-500">{user.email}</p>
-                </div>
-              </div>
-              <div className="mt-3 flex flex-col space-y-2">
-                <Link href="/profile">
-                  <a 
-                    className={cn(
-                      "flex items-center px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors",
-                      location === '/profile' 
-                        ? "bg-primary bg-opacity-10 border-l-2 border-primary text-primary font-medium" 
-                        : "text-gray-700"
-                    )}
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    <User className="h-4 w-4 mr-2" />
-                    <span>My Profile</span>
-                  </a>
-                </Link>
-                <Button 
-                  variant="outline" 
-                  className="w-full flex items-center justify-center text-red-600 border-red-200 hover:bg-red-50"
-                  onClick={handleLogout}
-                  disabled={logoutMutation.isPending}
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  <span>Sign Out</span>
-                </Button>
-              </div>
+              <Button 
+                variant="outline" 
+                className="w-full flex items-center justify-center text-red-600 border-red-200 hover:bg-red-50"
+                onClick={handleLogout}
+                disabled={logoutMutation.isPending}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                <span>Sign Out</span>
+              </Button>
             </div>
           )}
         </div>
