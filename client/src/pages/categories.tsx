@@ -18,6 +18,7 @@ import { PlusCircle, Trash } from 'lucide-react';
 import { transactionCategories } from '@shared/schema';
 import { useCategories } from '@/hooks/use-categories';
 import { MainLayout } from '@/components/layout/MainLayout';
+import { BulkCategoryUpdate } from '@/components/categories/BulkCategoryUpdate';
 
 export default function Categories() {
   const { toast } = useToast();
@@ -170,6 +171,11 @@ export default function Categories() {
             </CardContent>
           </Card>
         )}
+        
+        {/* Bulk Category Update */}
+        <BulkCategoryUpdate 
+          categories={[...transactionCategories, ...customCategories]} 
+        />
         
         {/* Delete Confirmation Dialog */}
         <AlertDialog open={!!categoryToDelete} onOpenChange={() => setCategoryToDelete(null)}>
