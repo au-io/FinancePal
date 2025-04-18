@@ -395,32 +395,32 @@ export function CategoryExpenseForecast({ transactions, isLoading }: CategoryExp
                       payload.forEach(p => { total += (p.value as number) || 0; });
                       
                       return (
-                        <div className="bg-white p-3 border rounded-md shadow-md">
-                          <p className="font-medium mb-2">{label}</p>
-                          <div className="text-sm space-y-1 max-h-[250px] overflow-y-auto">
+                        <div className="bg-white p-4 border rounded-md shadow-md">
+                          <p className="font-medium text-base mb-3">{label}</p>
+                          <div className="text-sm space-y-2 max-h-[300px] overflow-y-auto pr-1">
                             {payload.map((entry, index) => {
                               const value = (entry.value as number) || 0;
                               const percentage = Math.round((value / total) * 100);
                               
                               return (
-                                <div key={index} className="flex items-center justify-between gap-4">
-                                  <div className="flex items-center">
+                                <div key={index} className="flex items-center justify-between gap-6 py-1">
+                                  <div className="flex items-center min-w-[150px]">
                                     <div 
-                                      className="w-3 h-3 rounded-full mr-2" 
+                                      className="w-4 h-4 rounded-full mr-2 border border-gray-100" 
                                       style={{ backgroundColor: entry.color }}
                                     />
-                                    <span>{entry.name}: </span>
+                                    <span className="font-medium" style={{ color: entry.color }}>{entry.name}</span>
                                   </div>
-                                  <div className="font-medium">
+                                  <div className="font-medium whitespace-nowrap">
                                     {formatCurrency(value)} 
-                                    <span className="text-xs text-gray-500 ml-1">
+                                    <span className="text-gray-500 ml-1">
                                       ({percentage}%)
                                     </span>
                                   </div>
                                 </div>
                               );
                             })}
-                            <div className="border-t mt-2 pt-2 font-medium flex justify-between">
+                            <div className="border-t mt-3 pt-3 font-bold flex justify-between">
                               <span>Total:</span>
                               <span>{formatCurrency(total)}</span>
                             </div>
@@ -435,7 +435,23 @@ export function CategoryExpenseForecast({ transactions, isLoading }: CategoryExp
                   layout="horizontal" 
                   verticalAlign="bottom" 
                   align="center"
-                  wrapperStyle={{ marginTop: 20, paddingTop: 10 }}
+                  wrapperStyle={{ 
+                    marginTop: 20, 
+                    paddingTop: 10,
+                    overflowX: 'auto' 
+                  }}
+                  iconSize={10}
+                  iconType="circle"
+                  formatter={(value, entry) => (
+                    <span style={{ 
+                      color: '#333', 
+                      marginRight: 10,
+                      padding: '2px 4px',
+                      fontWeight: 500
+                    }}>
+                      {value}
+                    </span>
+                  )}
                 />
                 {categories.map((category) => (
                   <Bar 
@@ -444,6 +460,9 @@ export function CategoryExpenseForecast({ transactions, isLoading }: CategoryExp
                     name={category}
                     stackId="a" 
                     fill={categoryColors[category] || '#8884d8'}
+                    stroke={categoryColors[category] || '#8884d8'}
+                    strokeWidth={1}
+                    radius={[0, 0, 0, 0]}
                   />
                 ))}
               </BarChart>
