@@ -227,8 +227,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Account not found" });
       }
       
-      // Only allow users to update their own accounts
-      if (account.userId !== req.user!.id) {
+      // Allow if account belongs to the user directly
+      const isSameUser = account.userId === req.user!.id;
+      
+      // Or allow if both users are in the same family (family account sharing)
+      let isSameFamily = false;
+      if (req.user && req.user.familyId) {
+        const accountOwner = await storage.getUser(account.userId);
+        isSameFamily = Boolean(accountOwner && accountOwner.familyId === req.user.familyId && accountOwner.familyId !== null);
+      }
+      
+      // Admin can also update accounts
+      const isAdmin = req.user!.isAdmin;
+      
+      if (!isSameUser && !isSameFamily && !isAdmin) {
         return res.status(403).json({ message: "You don't have permission to update this account" });
       }
       
@@ -247,8 +259,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(404).json({ message: "Account not found" });
     }
     
-    // Only allow users to delete their own accounts
-    if (account.userId !== req.user!.id) {
+    // Allow if account belongs to the user directly
+    const isSameUser = account.userId === req.user!.id;
+    
+    // Or allow if both users are in the same family (family account sharing)
+    let isSameFamily = false;
+    if (req.user && req.user.familyId) {
+      const accountOwner = await storage.getUser(account.userId);
+      isSameFamily = Boolean(accountOwner && accountOwner.familyId === req.user.familyId && accountOwner.familyId !== null);
+    }
+    
+    // Admin can also delete accounts
+    const isAdmin = req.user!.isAdmin;
+    
+    if (!isSameUser && !isSameFamily && !isAdmin) {
       return res.status(403).json({ message: "You don't have permission to delete this account" });
     }
     
