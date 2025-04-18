@@ -264,6 +264,23 @@ export class DatabaseStorage implements IStorage {
                           transactionData.sourceAccountId !== originalTransaction.sourceAccountId;
       const destChanged = transactionData.destinationAccountId !== undefined && 
                          transactionData.destinationAccountId !== originalTransaction.destinationAccountId;
+                         
+      console.log('Transaction update:', { 
+        id,
+        original: {
+          amount: originalTransaction.amount,
+          type: originalTransaction.type,
+          sourceId: originalTransaction.sourceAccountId,
+          destId: originalTransaction.destinationAccountId
+        },
+        updated: {
+          amount: transactionData.amount !== undefined ? transactionData.amount : originalTransaction.amount,
+          type: transactionData.type !== undefined ? transactionData.type : originalTransaction.type,
+          sourceId: transactionData.sourceAccountId !== undefined ? transactionData.sourceAccountId : originalTransaction.sourceAccountId,
+          destId: transactionData.destinationAccountId !== undefined ? transactionData.destinationAccountId : originalTransaction.destinationAccountId
+        },
+        changes: { amountChanged, typeChanged, sourceChanged, destChanged }
+      });
       
       if (amountChanged || typeChanged || sourceChanged || destChanged) {
         // First, reverse the effects of the original transaction

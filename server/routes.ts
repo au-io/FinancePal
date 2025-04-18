@@ -469,7 +469,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      console.log("Updating transaction in routes:", { 
+        transactionId, 
+        data: updatedData,
+        currentTransaction: transaction
+      });
+      
       const updatedTransaction = await storage.updateTransaction(transactionId, updatedData);
+      
+      console.log("Update completed:", { 
+        updatedTransaction 
+      });
+      
       res.json(updatedTransaction);
     } catch (error) {
       next(error);
