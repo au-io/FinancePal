@@ -14,10 +14,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { PlusCircle, Trash, ArrowLeft } from 'lucide-react';
+import { PlusCircle, Trash } from 'lucide-react';
 import { transactionCategories } from '@shared/schema';
 import { useCategories } from '@/hooks/use-categories';
-import { Link } from 'wouter';
+import { MainLayout } from '@/components/layout/MainLayout';
 
 export default function Categories() {
   const { toast } = useToast();
@@ -72,98 +72,93 @@ export default function Categories() {
   };
   
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <Link href="/">
-            <Button variant="outline" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
+    <MainLayout>
+      <div className="container mx-auto py-6 space-y-6">
+        <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Transaction Categories</h1>
         </div>
-      </div>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Add New Category</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-3">
-            <Input 
-              placeholder="Enter category name" 
-              value={newCategory}
-              onChange={(e) => setNewCategory(e.target.value)}
-              className="max-w-md"
-            />
-            <Button 
-              onClick={handleAddCategory}
-              disabled={!newCategory.trim()}
-            >
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Category
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>System Categories</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            {transactionCategories.map((category) => (
-              <div key={category} className="flex items-center p-2 border rounded-md">
-                <span className="font-medium flex-1">{category}</span>
-                {/* System categories can't be deleted */}
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-      
-      {customCategories.length > 0 && (
+        
         <Card>
           <CardHeader>
-            <CardTitle>Custom Categories</CardTitle>
+            <CardTitle>Add New Category</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-3">
+              <Input 
+                placeholder="Enter category name" 
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                className="max-w-md"
+              />
+              <Button 
+                onClick={handleAddCategory}
+                disabled={!newCategory.trim()}
+              >
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Category
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>System Categories</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              {customCategories.map((category) => (
+              {transactionCategories.map((category) => (
                 <div key={category} className="flex items-center p-2 border rounded-md">
                   <span className="font-medium flex-1">{category}</span>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => handleDeleteCategory(category)}
-                  >
-                    <Trash className="h-4 w-4 text-destructive" />
-                  </Button>
+                  {/* System categories can't be deleted */}
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
-      )}
-      
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!categoryToDelete} onOpenChange={() => setCategoryToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will remove the category "{categoryToDelete}". This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteCategory} className="bg-destructive text-destructive-foreground">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+        
+        {customCategories.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Custom Categories</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                {customCategories.map((category) => (
+                  <div key={category} className="flex items-center p-2 border rounded-md">
+                    <span className="font-medium flex-1">{category}</span>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleDeleteCategory(category)}
+                    >
+                      <Trash className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={!!categoryToDelete} onOpenChange={() => setCategoryToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will remove the category "{categoryToDelete}". This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteCategory} className="bg-destructive text-destructive-foreground">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </MainLayout>
   );
 }
