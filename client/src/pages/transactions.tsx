@@ -177,6 +177,15 @@ export default function Transactions() {
       accessor: 'category',
     },
     {
+      header: 'Account',
+      accessor: (tx: any) => {
+        if (tx.type === 'Transfer') {
+          return `${tx.sourceAccountName || 'Unknown'} → ${tx.destinationAccountName || 'Unknown'}`;
+        }
+        return tx.sourceAccountName || 'Unknown';
+      },
+    },
+    {
       header: 'Type',
       accessor: 'type',
     },

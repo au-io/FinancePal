@@ -81,6 +81,16 @@ export function RecentTransactions({ transactions, isLoading }: RecentTransactio
                       <p className="text-gray-500">
                         {formatDistanceToNow(new Date(transaction.date), { addSuffix: true })}
                       </p>
+                      {(transaction as any).sourceAccountName && (
+                        <>
+                          <span className="text-gray-300">•</span>
+                          <p className="text-gray-500">
+                            {transaction.type === 'Transfer' 
+                              ? `${(transaction as any).sourceAccountName} → ${(transaction as any).destinationAccountName || 'Unknown'}`
+                              : (transaction as any).sourceAccountName}
+                          </p>
+                        </>
+                      )}
                       {(transaction as any).userName && (
                         <>
                           <span className="text-gray-300">•</span>

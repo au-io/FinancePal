@@ -394,13 +394,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
     
-    // Enhance transactions with user data
+    // Enhance transactions with user data and account names
     const enhancedTransactions = await Promise.all(transactions.map(async (transaction) => {
       const user = await storage.getUser(transaction.userId);
+      const sourceAccount = await storage.getAccount(transaction.sourceAccountId);
+      
+      // Also get destination account name for transfers
+      let destinationAccountName = null;
+      if (transaction.type === 'Transfer' && transaction.destinationAccountId) {
+        const destAccount = await storage.getAccount(transaction.destinationAccountId);
+        destinationAccountName = destAccount ? destAccount.name : 'Unknown Account';
+      }
+      
       return {
         ...transaction,
         userName: user ? user.name : 'Unknown User',
-        userUsername: user ? user.username : 'unknown'
+        userUsername: user ? user.username : 'unknown',
+        sourceAccountName: sourceAccount ? sourceAccount.name : 'Unknown Account',
+        destinationAccountName
       };
     }));
     
@@ -559,13 +570,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     const familyTransactions = await storage.getTransactionsByFamilyId(user.familyId);
     
-    // Enhance transactions with user data
+    // Enhance transactions with user data and account names
     const enhancedTransactions = await Promise.all(familyTransactions.map(async (transaction) => {
       const user = await storage.getUser(transaction.userId);
+      const sourceAccount = await storage.getAccount(transaction.sourceAccountId);
+      
+      // Also get destination account name for transfers
+      let destinationAccountName = null;
+      if (transaction.type === 'Transfer' && transaction.destinationAccountId) {
+        const destAccount = await storage.getAccount(transaction.destinationAccountId);
+        destinationAccountName = destAccount ? destAccount.name : 'Unknown Account';
+      }
+      
       return {
         ...transaction,
         userName: user ? user.name : 'Unknown User',
-        userUsername: user ? user.username : 'unknown'
+        userUsername: user ? user.username : 'unknown',
+        sourceAccountName: sourceAccount ? sourceAccount.name : 'Unknown Account',
+        destinationAccountName
       };
     }));
     
