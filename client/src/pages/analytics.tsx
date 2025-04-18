@@ -33,7 +33,64 @@ export default function Analytics() {
 
   // Calculate summary statistics
   const summaryStats = React.useMemo(() => {
-    if (!transactions) {
+    try {
+      if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
+        return {
+          totalIncome: 0,
+          totalExpenses: 0,
+          savings: 0,
+          savingsRate: 0,
+        };
+      }
+
+      // Filter transactions based on timeframe
+      const now = new Date();
+      const filteredTransactions = transactions.filter((tx: any) => {
+        if (!tx || !tx.date) return false;
+        
+        try {
+          const txDate = new Date(tx.date);
+          
+          if (timeframe === 'month') {
+            return txDate.getMonth() === now.getMonth() && 
+                  txDate.getFullYear() === now.getFullYear();
+          }
+          if (timeframe === 'quarter') {
+            const txQuarter = Math.floor(txDate.getMonth() / 3);
+            const currentQuarter = Math.floor(now.getMonth() / 3);
+            return txQuarter === currentQuarter && 
+                  txDate.getFullYear() === now.getFullYear();
+          }
+          if (timeframe === 'year') {
+            return txDate.getFullYear() === now.getFullYear();
+          }
+          return true; // All time
+        } catch (err) {
+          console.error("Error filtering transaction by date:", tx.date, err);
+          return false;
+        }
+      });
+
+      // Calculate income and expenses
+      const totalIncome = filteredTransactions
+        .filter((tx: any) => tx && tx.type === 'Income')
+        .reduce((sum: number, tx: any) => sum + (tx.amount || 0), 0);
+
+      const totalExpenses = filteredTransactions
+        .filter((tx: any) => tx && tx.type === 'Expense')
+        .reduce((sum: number, tx: any) => sum + (tx.amount || 0), 0);
+
+      const savings = totalIncome - totalExpenses;
+      const savingsRate = totalIncome > 0 ? (savings / totalIncome) * 100 : 0;
+
+      return {
+        totalIncome,
+        totalExpenses,
+        savings,
+        savingsRate,
+      };
+    } catch (err) {
+      console.error("Error calculating summary statistics:", err);
       return {
         totalIncome: 0,
         totalExpenses: 0,
@@ -41,45 +98,6 @@ export default function Analytics() {
         savingsRate: 0,
       };
     }
-
-    // Filter transactions based on timeframe
-    const now = new Date();
-    const filteredTransactions = transactions.filter((tx: any) => {
-      const txDate = new Date(tx.date);
-      if (timeframe === 'month') {
-        return txDate.getMonth() === now.getMonth() && 
-               txDate.getFullYear() === now.getFullYear();
-      }
-      if (timeframe === 'quarter') {
-        const txQuarter = Math.floor(txDate.getMonth() / 3);
-        const currentQuarter = Math.floor(now.getMonth() / 3);
-        return txQuarter === currentQuarter && 
-               txDate.getFullYear() === now.getFullYear();
-      }
-      if (timeframe === 'year') {
-        return txDate.getFullYear() === now.getFullYear();
-      }
-      return true; // All time
-    });
-
-    // Calculate income and expenses
-    const totalIncome = filteredTransactions
-      .filter((tx: any) => tx.type === 'Income')
-      .reduce((sum: number, tx: any) => sum + tx.amount, 0);
-
-    const totalExpenses = filteredTransactions
-      .filter((tx: any) => tx.type === 'Expense')
-      .reduce((sum: number, tx: any) => sum + tx.amount, 0);
-
-    const savings = totalIncome - totalExpenses;
-    const savingsRate = totalIncome > 0 ? (savings / totalIncome) * 100 : 0;
-
-    return {
-      totalIncome,
-      totalExpenses,
-      savings,
-      savingsRate,
-    };
   }, [transactions, timeframe]);
 
   const isLoading = isLoadingTransactions || isLoadingAccounts;
@@ -179,23 +197,23 @@ export default function Analytics() {
           {/* Analytics Components */}
           <div className="space-y-6">
             <AccountBalanceTrend 
-              transactions={transactions || []} 
-              accounts={accounts || []} 
+              transactions={Array.isArray(transactions) ? transactions : []} 
+              accounts={Array.isArray(accounts) ? accounts : []} 
               isPersonalView={isPersonalView}
             />
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <TransactionCalendar 
-                transactions={transactions || []} 
+                transactions={Array.isArray(transactions) ? transactions : []} 
                 isLoading={isLoading} 
               />
               <SubscriptionAnalytics 
-                transactions={transactions || []} 
+                transactions={Array.isArray(transactions) ? transactions : []} 
               />
             </div>
             
             <SpendingAnalytics 
-              transactions={transactions || []} 
+              transactions={Array.isArray(transactions) ? transactions : []} 
               timeframe={timeframe} 
             />
           </div>

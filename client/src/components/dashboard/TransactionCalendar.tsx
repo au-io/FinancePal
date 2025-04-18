@@ -16,75 +16,116 @@ export function TransactionCalendar({ transactions, isLoading }: TransactionCale
   
   // Get transactions for the selected date
   const dayTransactions = React.useMemo(() => {
-    if (!transactions || !selectedDate) return [];
-    
-    return transactions.filter(tx => {
-      const txDate = parseISO(tx.date.toString());
-      return isSameDay(txDate, selectedDate);
-    }).sort((a, b) => {
-      const dateA = new Date(a.date).getTime();
-      const dateB = new Date(b.date).getTime();
-      return dateB - dateA; // Sort by date descending
-    });
+    try {
+      if (!transactions || !selectedDate) return [];
+      
+      return transactions.filter(tx => {
+        if (!tx || !tx.date) return false;
+        
+        try {
+          const txDate = tx.date instanceof Date ? tx.date : parseISO(String(tx.date));
+          return isSameDay(txDate, selectedDate);
+        } catch (err) {
+          console.error("Error parsing transaction date:", tx.date, err);
+          return false;
+        }
+      }).sort((a, b) => {
+        try {
+          const dateA = new Date(a.date).getTime();
+          const dateB = new Date(b.date).getTime();
+          return dateB - dateA; // Sort by date descending
+        } catch (err) {
+          console.error("Error sorting transactions by date:", err);
+          return 0;
+        }
+      });
+    } catch (err) {
+      console.error("Error getting day transactions:", err);
+      return [];
+    }
   }, [transactions, selectedDate]);
   
   // Calculate totals for the selected date
   const dayTotals = React.useMemo(() => {
-    if (!dayTransactions.length) {
+    try {
+      if (!dayTransactions || !dayTransactions.length) {
+        return { income: 0, expenses: 0, net: 0 };
+      }
+      
+      const income = dayTransactions
+        .filter(tx => tx && tx.type === 'Income')
+        .reduce((sum, tx) => sum + (tx.amount || 0), 0);
+      
+      const expenses = dayTransactions
+        .filter(tx => tx && tx.type === 'Expense')
+        .reduce((sum, tx) => sum + (tx.amount || 0), 0);
+      
+      return {
+        income,
+        expenses,
+        net: income - expenses
+      };
+    } catch (err) {
+      console.error("Error calculating day totals:", err);
       return { income: 0, expenses: 0, net: 0 };
     }
-    
-    const income = dayTransactions
-      .filter(tx => tx.type === 'Income')
-      .reduce((sum, tx) => sum + tx.amount, 0);
-    
-    const expenses = dayTransactions
-      .filter(tx => tx.type === 'Expense')
-      .reduce((sum, tx) => sum + tx.amount, 0);
-    
-    return {
-      income,
-      expenses,
-      net: income - expenses
-    };
   }, [dayTransactions]);
 
   // Generate calendar day modifiers to highlight days with transactions
   const dayWithTransactionsModifier = React.useMemo(() => {
-    if (!transactions) return {};
-    
-    const daysWithIncome = new Set();
-    const daysWithExpenses = new Set();
-    const daysWithBoth = new Set();
-    
-    transactions.forEach(tx => {
-      const txDate = parseISO(tx.date.toString());
-      const dateStr = txDate.toDateString();
+    try {
+      if (!transactions || !Array.isArray(transactions)) return {
+        income: () => false,
+        expense: () => false,
+        both: () => false
+      };
       
-      if (tx.type === 'Income') {
-        if (daysWithExpenses.has(dateStr)) {
-          daysWithBoth.add(dateStr);
-          daysWithExpenses.delete(dateStr);
-          daysWithIncome.delete(dateStr);
-        } else if (!daysWithBoth.has(dateStr)) {
-          daysWithIncome.add(dateStr);
+      const daysWithIncome = new Set<string>();
+      const daysWithExpenses = new Set<string>();
+      const daysWithBoth = new Set<string>();
+      
+      transactions.forEach(tx => {
+        try {
+          if (!tx || !tx.date || !tx.type) return;
+          
+          const txDate = tx.date instanceof Date ? tx.date : parseISO(String(tx.date));
+          const dateStr = txDate.toDateString();
+          
+          if (tx.type === 'Income') {
+            if (daysWithExpenses.has(dateStr)) {
+              daysWithBoth.add(dateStr);
+              daysWithExpenses.delete(dateStr);
+              daysWithIncome.delete(dateStr);
+            } else if (!daysWithBoth.has(dateStr)) {
+              daysWithIncome.add(dateStr);
+            }
+          } else if (tx.type === 'Expense') {
+            if (daysWithIncome.has(dateStr)) {
+              daysWithBoth.add(dateStr);
+              daysWithExpenses.delete(dateStr);
+              daysWithIncome.delete(dateStr);
+            } else if (!daysWithBoth.has(dateStr)) {
+              daysWithExpenses.add(dateStr);
+            }
+          }
+        } catch (err) {
+          console.error("Error processing transaction date for calendar:", tx, err);
         }
-      } else if (tx.type === 'Expense') {
-        if (daysWithIncome.has(dateStr)) {
-          daysWithBoth.add(dateStr);
-          daysWithExpenses.delete(dateStr);
-          daysWithIncome.delete(dateStr);
-        } else if (!daysWithBoth.has(dateStr)) {
-          daysWithExpenses.add(dateStr);
-        }
-      }
-    });
-    
-    return {
-      income: (date: Date) => daysWithIncome.has(date.toDateString()),
-      expense: (date: Date) => daysWithExpenses.has(date.toDateString()),
-      both: (date: Date) => daysWithBoth.has(date.toDateString()),
-    };
+      });
+      
+      return {
+        income: (date: Date) => date && daysWithIncome.has(date.toDateString()),
+        expense: (date: Date) => date && daysWithExpenses.has(date.toDateString()),
+        both: (date: Date) => date && daysWithBoth.has(date.toDateString()),
+      };
+    } catch (err) {
+      console.error("Error generating calendar day modifiers:", err);
+      return {
+        income: () => false,
+        expense: () => false,
+        both: () => false
+      };
+    }
   }, [transactions]);
 
   return (

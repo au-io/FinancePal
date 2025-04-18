@@ -58,7 +58,7 @@ export function SpendingAnalytics({ transactions, timeframe }: SpendingAnalytics
         if (!tx.date) return false;
         
         try {
-          const txDate = tx.date instanceof Date ? tx.date : parseISO(tx.date.toString());
+          const txDate = tx.date instanceof Date ? tx.date : parseISO(String(tx.date));
           return isAfter(txDate, startDate) || txDate.getTime() === startDate.getTime();
         } catch (err) {
           console.error("Error parsing date:", tx.date, err);
@@ -121,7 +121,7 @@ export function SpendingAnalytics({ transactions, timeframe }: SpendingAnalytics
         if (!tx.date) return;
         
         try {
-          const date = tx.date instanceof Date ? tx.date : parseISO(tx.date.toString());
+          const date = tx.date instanceof Date ? tx.date : parseISO(String(tx.date));
           const monthKey = format(date, 'MMM yyyy');
           
           if (months[monthKey] !== undefined) {
