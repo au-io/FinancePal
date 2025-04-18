@@ -454,6 +454,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updatedData.date = new Date(updatedData.date);
       }
       
+      // Ensure we don't override the userId with a blank value from the client
+      if (updatedData.userId === 0) {
+        delete updatedData.userId;
+      }
+      
       // If type is being updated, validate it's one of the allowed types
       if (updatedData.type && !transactionTypes.includes(updatedData.type as any)) {
         return res.status(400).json({ 

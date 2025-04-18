@@ -179,8 +179,10 @@ export function TransactionModal({
   // Handle form submission
   const handleFormSubmit = (values: z.infer<typeof formSchema>) => {
     // Prepare values before submitting
+    const { userId, ...valuesWithoutUserId } = values;
+    
     const submissionValues = {
-      ...values,
+      ...valuesWithoutUserId,
       // Convert Date object to ISO string for server-side parsing
       date: values.date instanceof Date ? values.date.toISOString() : values.date,
       // Clear destination account if not a transfer
@@ -452,7 +454,7 @@ export function TransactionModal({
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} value={field.value || ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
