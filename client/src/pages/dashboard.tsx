@@ -17,6 +17,7 @@ import { TransactionCalendar } from '@/components/dashboard/TransactionCalendar'
 import { CashFlowForecast } from '@/components/dashboard/CashFlowForecast';
 import { CurrentMonthDailyTransactions } from '@/components/dashboard/CurrentMonthDailyTransactions';
 import { ExpensesByUser } from '@/components/dashboard/ExpensesByUser';
+import { HistoricalExpensesByUser } from '@/components/dashboard/HistoricalExpensesByUser';
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -181,6 +182,14 @@ export default function Dashboard() {
           
           <div className="mb-6">
             <ExpensesByUser
+              transactions={transactions || []}
+              familyMembers={familyMembers || []}
+              isLoading={isLoading}
+            />
+          </div>
+          
+          <div className="mb-6">
+            <HistoricalExpensesByUser
               transactions={transactions || []}
               familyMembers={familyMembers || []}
               isLoading={isLoading}
