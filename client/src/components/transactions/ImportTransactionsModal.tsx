@@ -177,10 +177,35 @@ export function ImportTransactionsModal({
     reader.onload = (event) => {
       try {
         const text = event.target?.result as string;
+        
+        // Log first 100 characters for debugging
+        console.log('CSV sample:', text.substring(0, 100));
+        
+        // Parse the CSV data
         const parsedData = parseCSV(text);
+        
+        if (parsedData.length === 0) {
+          setError('No data found in the CSV file. Please check the format and ensure it has headers (Date, Type, Category, Description, Amount).');
+          setPreviewData([]);
+          return;
+        }
+        
+        // Check for required columns
+        const firstRow = parsedData[0];
+        const missingColumns = [];
+        
+        if (!firstRow.Date && !firstRow.date) missingColumns.push('Date');
+        if (!firstRow.Amount && !firstRow.amount) missingColumns.push('Amount');
+        
+        if (missingColumns.length > 0) {
+          setError(`Missing required columns in CSV: ${missingColumns.join(', ')}. Please ensure your CSV has the correct headers.`);
+          setPreviewData(parsedData.slice(0, 5)); // Still show preview to help debugging
+          return;
+        }
+        
         setPreviewData(parsedData.slice(0, 5)); // Preview first 5 rows
       } catch (err) {
-        setError('Invalid CSV format');
+        setError(`Invalid CSV format: ${err instanceof Error ? err.message : 'Unknown error'}`);
         setPreviewData([]);
       }
     };
@@ -200,10 +225,25 @@ export function ImportTransactionsModal({
     try {
       // Read the file
       const text = await file.text();
+      
+      // Log sample for debugging
+      console.log('CSV import content sample:', text.substring(0, 200));
+      
       const parsedData = parseCSV(text);
       
       if (parsedData.length === 0) {
-        throw new Error('No data found in the CSV file');
+        throw new Error('No data found in the CSV file. Make sure your file has the correct format with the following headers: Date, Type, Category, Description, Amount.');
+      }
+      
+      // Check for required columns
+      const firstRow = parsedData[0];
+      const missingColumns = [];
+      
+      if (!('Date' in firstRow) && !('date' in firstRow)) missingColumns.push('Date');
+      if (!('Amount' in firstRow) && !('amount' in firstRow)) missingColumns.push('Amount');
+      
+      if (missingColumns.length > 0) {
+        throw new Error(`Missing required columns in CSV: ${missingColumns.join(', ')}. Please ensure your CSV has all required headers.`);
       }
       
       setImportProgress(30);
@@ -211,75 +251,125 @@ export function ImportTransactionsModal({
       // Process transactions in batches
       const batchSize = 20;
       const batches = Math.ceil(parsedData.length / batchSize);
+      let importedCount = 0;
+      let errorCount = 0;
+      let errors = [];
       
       for (let i = 0; i < batches; i++) {
         const batch = parsedData.slice(i * batchSize, (i + 1) * batchSize);
         
         // Convert each row to a transaction
-        const transactions = batch.map(row => {
-          // Get amount and validate
-          const amount = parseFloat(row.Amount || '0');
-          if (isNaN(amount)) {
-            throw new Error(`Invalid amount: "${row.Amount}" in row: ${JSON.stringify(row)}`);
-          }
-          
-          // Determine and validate transaction type
-          let type = row.Type;
-          if (!type) {
-            // Auto-determine type based on amount if not provided
-            type = amount >= 0 ? 'Income' : 'Expense';
-          } else {
-            // Normalize transaction type to match one of the valid types
-            const normalizedType = normalizeTransactionType(type);
-            if (!normalizedType) {
-              throw new Error(`Invalid transaction type: "${type}". Must be one of: Income, Expense, or Transfer.`);
-            }
-            type = normalizedType;
-          }
-          
-          // Skip transfer transactions without destination accounts
-          if (type === 'Transfer' && !row.DestinationAccount) {
-            throw new Error(`Transfer transaction requires a destination account. Row: ${JSON.stringify(row)}`);
-          }
-          
-          // Validate and normalize category
-          let category = row.Category || 'Other';
-          const normalizedCategory = normalizeCategory(category);
-          if (normalizedCategory) {
-            category = normalizedCategory;
-          }
-          
-          // Create base transaction object
-          const transaction: any = {
-            sourceAccountId: parseInt(accountId),
-            amount: amount,
-            type: type,
-            category: category,
-            description: row.Description || '',
-            date: new Date(row.Date || new Date()).toISOString(),
-          };
-          
-          // If it's a transfer and has a destination account, add it
-          if (type === 'Transfer' && row.DestinationAccount) {
-            // Find the account ID by name
-            const destinationAccount = accounts.find(a => 
-              a.name.toLowerCase() === row.DestinationAccount.toLowerCase()
-            );
+        const transactions = [];
+        
+        for (const row of batch) {
+          try {
+            // Get amount and validate
+            const amountKey = 'Amount' in row ? 'Amount' : 'amount';
+            const amountStr = row[amountKey] ? row[amountKey].trim() : '';
+            const amount = parseFloat(amountStr || '0');
             
-            if (destinationAccount) {
-              transaction.destinationAccountId = destinationAccount.id;
+            if (isNaN(amount)) {
+              throw new Error(`Invalid amount: "${amountStr}"`);
+            }
+            
+            // Get date and validate
+            const dateKey = 'Date' in row ? 'Date' : 'date';
+            const dateStr = row[dateKey] ? row[dateKey].trim() : '';
+            let parsedDate;
+            
+            try {
+              parsedDate = new Date(dateStr);
+              if (isNaN(parsedDate.getTime())) {
+                throw new Error(`Invalid date: "${dateStr}". Use format YYYY-MM-DD.`);
+              }
+            } catch (e) {
+              throw new Error(`Invalid date: "${dateStr}". Use format YYYY-MM-DD.`);
+            }
+            
+            // Determine and validate transaction type
+            const typeKey = 'Type' in row ? 'Type' : 'type';
+            let type = row[typeKey] ? row[typeKey].trim() : '';
+            
+            if (!type) {
+              // Auto-determine type based on amount if not provided
+              type = amount >= 0 ? 'Income' : 'Expense';
             } else {
-              throw new Error(`Destination account '${row.DestinationAccount}' not found`);
+              // Normalize transaction type to match one of the valid types
+              const normalizedType = normalizeTransactionType(type);
+              if (!normalizedType) {
+                throw new Error(`Invalid transaction type: "${type}". Must be one of: Income, Expense, or Transfer.`);
+              }
+              type = normalizedType;
+            }
+            
+            // Skip transfer transactions without destination accounts
+            const destKey = 'DestinationAccount' in row ? 'DestinationAccount' : 'destinationAccount';
+            if (type === 'Transfer' && !row[destKey]) {
+              throw new Error(`Transfer transaction requires a destination account.`);
+            }
+            
+            // Validate and normalize category
+            const categoryKey = 'Category' in row ? 'Category' : 'category';
+            let category = row[categoryKey] ? row[categoryKey].trim() : 'Other';
+            const normalizedCategory = normalizeCategory(category);
+            if (normalizedCategory) {
+              category = normalizedCategory;
+            }
+            
+            // Get description
+            const descKey = 'Description' in row ? 'Description' : 'description';
+            const description = row[descKey] ? row[descKey].trim() : '';
+            
+            // Create base transaction object
+            const transaction: any = {
+              sourceAccountId: parseInt(accountId),
+              amount: amount,
+              type: type,
+              category: category,
+              description: description,
+              date: parsedDate.toISOString(),
+            };
+            
+            // If it's a transfer and has a destination account, add it
+            if (type === 'Transfer' && row[destKey]) {
+              // Find the account ID by name
+              const destinationAccountName = row[destKey].trim();
+              const destinationAccount = accounts.find(a => 
+                a.name.toLowerCase() === destinationAccountName.toLowerCase()
+              );
+              
+              if (destinationAccount) {
+                transaction.destinationAccountId = destinationAccount.id;
+              } else {
+                throw new Error(`Destination account '${destinationAccountName}' not found. Available accounts: ${accounts.map(a => a.name).join(', ')}`);
+              }
+            }
+            
+            transactions.push(transaction);
+          } catch (rowError) {
+            errorCount++;
+            errors.push(`Row ${i * batchSize + transactions.length + 1}: ${rowError.message}`);
+            
+            // If too many errors, stop processing
+            if (errorCount > 5) {
+              throw new Error(`Too many errors (${errorCount}). First 5 errors: ${errors.slice(0, 5).join('; ')}`);
             }
           }
-          
-          return transaction;
-        });
+        }
+        
+        if (transactions.length === 0) {
+          continue;
+        }
         
         // Post transactions
-        await Promise.all(transactions.map(tx => 
-          apiRequest('POST', '/api/transactions', tx)
-        ));
+        try {
+          await Promise.all(transactions.map(tx => 
+            apiRequest('POST', '/api/transactions', tx)
+          ));
+          importedCount += transactions.length;
+        } catch (batchError) {
+          throw new Error(`Error importing batch ${i+1}: ${batchError.message}`);
+        }
         
         // Update progress
         setImportProgress(30 + Math.floor(70 * (i + 1) / batches));
@@ -287,13 +377,24 @@ export function ImportTransactionsModal({
       
       setImportProgress(100);
       
-      // Success
-      onSuccess();
-      
-      toast({
-        title: 'Import successful',
-        description: `Imported ${parsedData.length} transactions`,
-      });
+      // Report results
+      if (errorCount > 0) {
+        setError(`Imported ${importedCount} transactions with ${errorCount} errors. ${errors.slice(0, 3).join('; ')}`);
+        
+        toast({
+          title: 'Import partially successful',
+          description: `Imported ${importedCount} transactions with ${errorCount} errors.`,
+          variant: 'default',
+        });
+      } else {
+        // Full success
+        onSuccess();
+        
+        toast({
+          title: 'Import successful',
+          description: `Imported ${importedCount} transactions`,
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to import transactions');
       

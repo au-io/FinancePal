@@ -44,15 +44,47 @@ export async function downloadFileFromApi(
 }
 
 export function parseCSV(text: string): Array<Record<string, string>> {
-  const lines = text.split('\n');
-  const headers = lines[0].split(',');
+  // Normalize line endings and remove any BOM character
+  const normalizedText = text.replace(/^\ufeff/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   
-  return lines.slice(1).filter(line => line.trim()).map(line => {
+  // Clean up the text - fix common issues
+  let cleanedText = normalizedText;
+  
+  // If the CSV has no line breaks but has expected headers, try to fix it
+  if (!normalizedText.includes('\n') && /Date.*Type.*Category.*Description.*Amount/.test(normalizedText)) {
+    // Try to detect and insert line breaks between records
+    const datePattern = /(20\d{2}-\d{2}-\d{2})/g;
+    cleanedText = normalizedText.replace(datePattern, '\n$1');
+    
+    // If the first character is a newline, remove it (for the header row)
+    if (cleanedText.startsWith('\n')) {
+      cleanedText = cleanedText.substring(1);
+    }
+  }
+  
+  // Split into lines and filter out empty lines and comment lines
+  const lines = cleanedText.split('\n')
+    .filter(line => line.trim() && !line.trim().startsWith('#'));
+  
+  if (lines.length === 0) {
+    return [];
+  }
+  
+  // Get headers from the first line
+  const headerLine = lines[0];
+  const headers = headerLine.split(',').map(h => h.trim());
+  
+  // Process data rows
+  return lines.slice(1).map(line => {
     const values = line.split(',');
-    return headers.reduce((obj, header, i) => {
-      obj[header] = values[i];
-      return obj;
-    }, {} as Record<string, string>);
+    const result: Record<string, string> = {};
+    
+    headers.forEach((header, i) => {
+      // Handle the case where values might have fewer items than headers
+      result[header] = i < values.length ? values[i]?.trim() || '' : '';
+    });
+    
+    return result;
   });
 }
 
