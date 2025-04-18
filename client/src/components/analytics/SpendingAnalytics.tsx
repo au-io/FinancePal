@@ -28,81 +28,117 @@ export function SpendingAnalytics({ transactions, timeframe }: SpendingAnalytics
   
   // Filter transactions by timeframe and type
   const filteredTransactions = React.useMemo(() => {
-    // Only consider expense transactions
-    const expenses = transactions.filter(tx => tx.type === 'Expense');
-    
-    if (!expenses.length) return [];
-    
-    // Apply timeframe filter
-    const now = new Date();
-    let startDate: Date;
-    
-    switch (timeframe) {
-      case 'month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        break;
-      case 'quarter':
-        startDate = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
-        break;
-      case 'year':
-        startDate = new Date(now.getFullYear(), 0, 1);
-        break;
-      default: // all time
-        return expenses;
+    try {
+      if (!transactions || !transactions.length) return [];
+      
+      // Only consider expense transactions
+      const expenses = transactions.filter(tx => tx.type === 'Expense');
+      
+      if (!expenses.length) return [];
+      
+      // Apply timeframe filter
+      const now = new Date();
+      let startDate: Date;
+      
+      switch (timeframe) {
+        case 'month':
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          break;
+        case 'quarter':
+          startDate = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+          break;
+        case 'year':
+          startDate = new Date(now.getFullYear(), 0, 1);
+          break;
+        default: // all time
+          return expenses;
+      }
+      
+      return expenses.filter(tx => {
+        if (!tx.date) return false;
+        
+        try {
+          const txDate = tx.date instanceof Date ? tx.date : parseISO(tx.date.toString());
+          return isAfter(txDate, startDate) || txDate.getTime() === startDate.getTime();
+        } catch (err) {
+          console.error("Error parsing date:", tx.date, err);
+          return false;
+        }
+      });
+    } catch (err) {
+      console.error("Error filtering transactions:", err);
+      return [];
     }
-    
-    return expenses.filter(tx => {
-      const txDate = parseISO(tx.date.toString());
-      return isAfter(txDate, startDate) || txDate.getTime() === startDate.getTime();
-    });
   }, [transactions, timeframe]);
   
   // Category spending data
   const categoryData = React.useMemo(() => {
-    if (!filteredTransactions.length) return [];
-    
-    const categories: Record<string, number> = {};
-    
-    filteredTransactions.forEach(tx => {
-      if (!categories[tx.category]) {
-        categories[tx.category] = 0;
-      }
-      categories[tx.category] += tx.amount;
-    });
-    
-    return Object.entries(categories)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
+    try {
+      if (!filteredTransactions || !filteredTransactions.length) return [];
+      
+      const categories: Record<string, number> = {};
+      
+      filteredTransactions.forEach(tx => {
+        try {
+          const category = tx.category || 'Uncategorized';
+          
+          if (!categories[category]) {
+            categories[category] = 0;
+          }
+          categories[category] += tx.amount || 0;
+        } catch (err) {
+          console.error("Error processing transaction for category data:", tx, err);
+        }
+      });
+      
+      return Object.entries(categories)
+        .map(([name, value]) => ({ name, value }))
+        .sort((a, b) => b.value - a.value);
+    } catch (err) {
+      console.error("Error generating category data:", err);
+      return [];
+    }
   }, [filteredTransactions]);
   
   // Monthly spending data
   const monthlyData = React.useMemo(() => {
-    if (!filteredTransactions.length) return [];
-    
-    const months: Record<string, number> = {};
-    // Last 6 months regardless of timeframe for consistent comparison
-    const monthsToShow = 6;
-    
-    // Initialize last 6 months
-    for (let i = 0; i < monthsToShow; i++) {
-      const date = subMonths(new Date(), i);
-      const monthKey = format(date, 'MMM yyyy');
-      months[monthKey] = 0;
-    }
-    
-    // Fill in the data
-    filteredTransactions.forEach(tx => {
-      const date = parseISO(tx.date.toString());
-      const monthKey = format(date, 'MMM yyyy');
+    try {
+      if (!filteredTransactions || !filteredTransactions.length) return [];
       
-      if (months[monthKey] !== undefined) {
-        months[monthKey] += tx.amount;
+      const months: Record<string, number> = {};
+      // Last 6 months regardless of timeframe for consistent comparison
+      const monthsToShow = 6;
+      
+      // Initialize last 6 months
+      for (let i = 0; i < monthsToShow; i++) {
+        const date = subMonths(new Date(), i);
+        const monthKey = format(date, 'MMM yyyy');
+        months[monthKey] = 0;
       }
-    });
-    
-    return Object.entries(months)
-      .map(([name, value]) => ({ name, value }))
-      .reverse(); // Chronological order
+      
+      // Fill in the data
+      filteredTransactions.forEach(tx => {
+        if (!tx.date) return;
+        
+        try {
+          const date = tx.date instanceof Date ? tx.date : parseISO(tx.date.toString());
+          const monthKey = format(date, 'MMM yyyy');
+          
+          if (months[monthKey] !== undefined) {
+            months[monthKey] += tx.amount || 0;
+          }
+        } catch (err) {
+          console.error("Error formatting transaction date:", tx.date, err);
+        }
+      });
+      
+      return Object.entries(months)
+        .map(([name, value]) => ({ name, value }))
+        .reverse(); // Chronological order
+    } catch (err) {
+      console.error("Error generating monthly data:", err);
+      return [];
+    }
   }, [filteredTransactions]);
   
   const COLORS = ['#7F5539', '#9C6644', '#F8A100', '#FFB733', '#0F766E', '#14B8A6', '#EF4444', '#10B981'];

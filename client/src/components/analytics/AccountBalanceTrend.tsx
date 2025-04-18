@@ -14,71 +14,96 @@ interface AccountBalanceTrendProps {
 export function AccountBalanceTrend({ transactions, accounts, isPersonalView }: AccountBalanceTrendProps) {
   // Generate historical balance data
   const balanceData = React.useMemo(() => {
-    if (!transactions.length || !accounts.length) return [];
-    
-    // Start from 6 months ago
-    const startDate = subMonths(new Date(), 6);
-    const endDate = new Date();
-    
-    const months = [];
-    let currentDate = startOfMonth(startDate);
-    
-    while (isBefore(currentDate, endDate)) {
+    try {
+      if (!transactions || !transactions.length || !accounts || !accounts.length) return [];
+      
+      // Start from 6 months ago
+      const startDate = subMonths(new Date(), 6);
+      const endDate = new Date();
+      
+      const months = [];
+      let currentDate = startOfMonth(startDate);
+      
+      while (isBefore(currentDate, endDate)) {
+        months.push({
+          date: currentDate,
+          key: format(currentDate, 'MMM yyyy'),
+        });
+        currentDate = startOfMonth(endOfMonth(currentDate));
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      
+      // Add current month
       months.push({
-        date: currentDate,
-        key: format(currentDate, 'MMM yyyy'),
+        date: startOfMonth(endDate),
+        key: format(startOfMonth(endDate), 'MMM yyyy'),
       });
-      currentDate = startOfMonth(endOfMonth(currentDate));
-      currentDate.setDate(currentDate.getDate() + 1);
+      
+      // Calculate balance for each month
+      const chartData = months.map((month) => {
+        // Filter transactions up to this month
+        const txsBeforeMonth = transactions.filter((tx) => {
+          if (!tx.date) return false;
+          
+          try {
+            const txDate = tx.date instanceof Date ? tx.date : parseISO(String(tx.date));
+            return isBefore(txDate, month.date);
+          } catch (err) {
+            console.error("Error parsing date:", tx.date, err);
+            return false;
+          }
+        });
+        
+        // Calculate balance changes from transactions
+        const balanceChanges = txsBeforeMonth.reduce((changes, tx) => {
+          try {
+            const sourceId = tx.sourceAccountId;
+            
+            if (tx.type === 'Income') {
+              changes[sourceId] = (changes[sourceId] || 0) + (tx.amount || 0);
+            } else if (tx.type === 'Expense') {
+              changes[sourceId] = (changes[sourceId] || 0) - (tx.amount || 0);
+            } else if (tx.type === 'Transfer' && tx.destinationAccountId) {
+              changes[sourceId] = (changes[sourceId] || 0) - (tx.amount || 0);
+              changes[tx.destinationAccountId] = (changes[tx.destinationAccountId] || 0) + (tx.amount || 0);
+            }
+          } catch (err) {
+            console.error("Error processing transaction:", tx, err);
+          }
+          return changes;
+        }, {} as Record<number, number>);
+        
+        // Calculate ending balance for each account
+        const accountBalances = accounts.reduce((acc, account) => {
+          if (!account || !account.name) return acc;
+          
+          try {
+            const initialBalance = account.balance || 0;
+            const changes = balanceChanges[account.id] || 0;
+            
+            // Estimate the starting balance by subtracting changes
+            const estimatedBalance = initialBalance - changes;
+            
+            acc[account.name] = estimatedBalance;
+          } catch (err) {
+            console.error("Error calculating account balance:", account, err);
+            acc[account.name] = 0;
+          }
+          return acc;
+        }, {} as Record<string, number>);
+        
+        return {
+          month: month.key,
+          total: Object.values(accountBalances).reduce((sum, balance) => sum + (balance || 0), 0),
+          ...accountBalances,
+        };
+      });
+      
+      return chartData;
+    } catch (err) {
+      console.error("Error generating balance data:", err);
+      return [];
     }
-    
-    // Add current month
-    months.push({
-      date: startOfMonth(endDate),
-      key: format(startOfMonth(endDate), 'MMM yyyy'),
-    });
-    
-    // Calculate balance for each month
-    const chartData = months.map((month) => {
-      // Filter transactions up to this month
-      const txsBeforeMonth = transactions.filter((tx) => {
-        const txDate = parseISO(tx.date.toString());
-        return isBefore(txDate, month.date);
-      });
-      
-      // Calculate balance changes from transactions
-      const balanceChanges = txsBeforeMonth.reduce((changes, tx) => {
-        if (tx.type === 'Income') {
-          changes[tx.sourceAccountId] = (changes[tx.sourceAccountId] || 0) + tx.amount;
-        } else if (tx.type === 'Expense') {
-          changes[tx.sourceAccountId] = (changes[tx.sourceAccountId] || 0) - tx.amount;
-        } else if (tx.type === 'Transfer' && tx.destinationAccountId) {
-          changes[tx.sourceAccountId] = (changes[tx.sourceAccountId] || 0) - tx.amount;
-          changes[tx.destinationAccountId] = (changes[tx.destinationAccountId] || 0) + tx.amount;
-        }
-        return changes;
-      }, {} as Record<number, number>);
-      
-      // Calculate ending balance for each account
-      const accountBalances = accounts.reduce((acc, account) => {
-        const initialBalance = account.balance;
-        const changes = balanceChanges[account.id] || 0;
-        
-        // Estimate the starting balance by subtracting changes
-        const estimatedBalance = initialBalance - changes;
-        
-        acc[account.name] = estimatedBalance;
-        return acc;
-      }, {} as Record<string, number>);
-      
-      return {
-        month: month.key,
-        total: Object.values(accountBalances).reduce((sum, balance) => sum + balance, 0),
-        ...accountBalances,
-      };
-    });
-    
-    return chartData;
   }, [transactions, accounts]);
 
   // Get colors for the lines
