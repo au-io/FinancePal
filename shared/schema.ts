@@ -95,6 +95,7 @@ export const transactions = pgTable("transactions", {
   frequency: text("frequency"),
   frequencyDay: integer("frequency_day"),
   frequencyCustomDays: integer("frequency_custom_days"),
+  recurringEndDate: timestamp("recurring_end_date"),
 });
 
 export const insertTransactionSchema = createInsertSchema(transactions)
@@ -111,6 +112,7 @@ export const insertTransactionSchema = createInsertSchema(transactions)
     frequency: true,
     frequencyDay: true,
     frequencyCustomDays: true,
+    recurringEndDate: true,
   })
   .extend({
     // Enforce that type must be one of the defined transaction types
