@@ -77,9 +77,17 @@ export function RecentTransactions({ transactions, isLoading }: RecentTransactio
                   </div>
                   <div>
                     <p className="font-medium">{transaction.description || transaction.category}</p>
-                    <p className="text-xs text-gray-500">
-                      {formatDistanceToNow(new Date(transaction.date), { addSuffix: true })}
-                    </p>
+                    <div className="flex items-center text-xs space-x-2">
+                      <p className="text-gray-500">
+                        {formatDistanceToNow(new Date(transaction.date), { addSuffix: true })}
+                      </p>
+                      {(transaction as any).userName && (
+                        <>
+                          <span className="text-gray-300">•</span>
+                          <p className="text-gray-500">By {(transaction as any).userName}</p>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <span className={`font-medium ${
