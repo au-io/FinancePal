@@ -15,7 +15,8 @@ import {
   UserCheck,
   UserCog,
   Menu,
-  LogOut
+  LogOut,
+  Repeat
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -48,6 +49,11 @@ export function Sidebar() {
       href: '/transactions', 
       label: 'Transactions', 
       icon: <DollarSign className="h-5 w-5 mr-3" /> 
+    },
+    { 
+      href: '/recurring-transactions', 
+      label: 'Recurring', 
+      icon: <Repeat className="h-5 w-5 mr-3" /> 
     },
     { 
       href: '/categories', 

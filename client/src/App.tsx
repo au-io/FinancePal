@@ -11,6 +11,7 @@ import AuthPage from "@/pages/auth-page";
 import Dashboard from "@/pages/dashboard";
 import Accounts from "@/pages/accounts";
 import Transactions from "@/pages/transactions";
+import RecurringTransactions from "@/pages/recurring-transactions";
 import Categories from "@/pages/categories";
 import Family from "@/pages/family";
 import Analytics from "@/pages/analytics";
@@ -23,6 +24,7 @@ function Router() {
       <ProtectedRoute path="/" component={Dashboard} />
       <ProtectedRoute path="/accounts" component={Accounts} />
       <ProtectedRoute path="/transactions" component={Transactions} />
+      <ProtectedRoute path="/recurring-transactions" component={RecurringTransactions} />
       <ProtectedRoute path="/categories" component={Categories} />
       <ProtectedRoute path="/family" component={Family} />
       <ProtectedRoute path="/analytics" component={Analytics} />
