@@ -213,7 +213,7 @@ export function TransactionModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={() => !isSubmitting && onClose()}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto w-[95vw] p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="text-xl font-heading">
             {isEditing ? 'Edit Transaction' : 'New Transaction'}
@@ -395,30 +395,34 @@ export function TransactionModal({
             ) : (
               <FormItem>
                 <FormLabel>Custom Category</FormLabel>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Input
                     value={newCategory}
                     onChange={(e) => setNewCategory(e.target.value)}
                     placeholder="Enter new category name"
                     className="flex-1"
                   />
-                  <Button 
-                    type="button" 
-                    onClick={handleNewCategorySubmit}
-                    disabled={!newCategory.trim()}
-                  >
-                    Add
-                  </Button>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => {
-                      setShowNewCategoryInput(false);
-                      setNewCategory('');
-                    }}
-                  >
-                    Cancel
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      type="button" 
+                      onClick={handleNewCategorySubmit}
+                      disabled={!newCategory.trim()}
+                      className="flex-1 sm:flex-none"
+                    >
+                      Add
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => {
+                        setShowNewCategoryInput(false);
+                        setNewCategory('');
+                      }}
+                      className="flex-1 sm:flex-none"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
               </FormItem>
             )}
