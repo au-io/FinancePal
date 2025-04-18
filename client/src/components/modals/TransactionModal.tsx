@@ -62,6 +62,7 @@ interface TransactionModalProps {
   accounts: Account[];
   editingTransaction?: Transaction | null;
   isSubmitting?: boolean;
+  defaultRecurring?: boolean;
 }
 
 // Extend the schema for the form
@@ -81,7 +82,8 @@ export function TransactionModal({
   onSubmit, 
   accounts, 
   editingTransaction = null,
-  isSubmitting = false
+  isSubmitting = false,
+  defaultRecurring = false
 }: TransactionModalProps) {
   const isEditing = !!editingTransaction;
   const { customCategories, addCategory } = useCategories();
@@ -150,16 +152,16 @@ export function TransactionModal({
         category: 'Other',
         description: '',
         date: new Date(),
-        isRecurring: false,
+        isRecurring: defaultRecurring,
         frequency: 'Monthly',
         frequencyDay: 1,
         frequencyCustomDays: 7,
         recurringEndDate: undefined,
         userId: 0,
       });
-      setShowRecurringOptions(false);
+      setShowRecurringOptions(defaultRecurring);
     }
-  }, [editingTransaction, form, accounts]);
+  }, [editingTransaction, form, accounts, defaultRecurring]);
 
   // Handle recurring toggle
   const handleRecurringChange = (value: string) => {
