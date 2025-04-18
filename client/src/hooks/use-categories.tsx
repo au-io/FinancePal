@@ -27,11 +27,28 @@ export function CategoryProvider({ children }: { children: ReactNode }) {
   // Extract custom categories from transactions
   useEffect(() => {
     if (transactions && transactions.length > 0) {
-      // Get unique categories from transactions that aren't in the base categories
-      const uniqueCategories = [...new Set(transactions.map(tx => tx.category))];
+      // Create a temporary array of categories
+      const categories: string[] = [];
+      // First get all categories
+      transactions.forEach(tx => {
+        if (tx.category && typeof tx.category === 'string') {
+          categories.push(tx.category);
+        }
+      });
+      
+      // Remove duplicates (we'll do this manually instead of using Set)
+      const uniqueCategories: string[] = [];
+      categories.forEach(cat => {
+        if (!uniqueCategories.includes(cat)) {
+          uniqueCategories.push(cat);
+        }
+      });
+      
+      // Filter out standard categories
       const customCats = uniqueCategories.filter(
         cat => !transactionCategories.includes(cat as any)
       );
+      
       setCustomCategoriesFromTransactions(customCats);
     }
   }, [transactions]);

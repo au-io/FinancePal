@@ -59,24 +59,46 @@ export function BulkCategoryUpdate({ categories }: BulkCategoryUpdateProps) {
       const contentType = response.headers.get('content-type');
       console.log('Content-Type:', contentType);
       
+      // Check if the content type indicates HTML (likely an error page)
+      if (contentType && contentType.includes('text/html')) {
+        console.error('Received HTML instead of JSON - likely a session error');
+        throw new Error('Your session may have expired. Please refresh the page and try again.');
+      }
+      
       const responseText = await response.text();
       console.log('Response text:', responseText);
+      
+      // If we got an empty response or a non-200 status
+      if (!responseText.trim() || !response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          throw new Error('Authentication error. Please log in again.');
+        } else {
+          throw new Error(`Server error: ${response.status}. Please try again.`);
+        }
+      }
       
       // Try to clean the response text in case there are any non-JSON characters
       const cleanedText = responseText.trim();
       
       let data;
       try {
-        // Only try to parse if there's actual content
-        if (cleanedText) {
+        // Only try to parse if there's actual content and it looks like JSON
+        if (cleanedText && (cleanedText.startsWith('{') || cleanedText.startsWith('['))) {
           data = JSON.parse(cleanedText);
         } else {
-          throw new Error('Empty response from server');
+          console.error('Response does not appear to be valid JSON:', cleanedText);
+          throw new Error('Invalid response format from server');
         }
       } catch (parseError) {
         console.error('Error parsing JSON response:', parseError);
         console.error('Attempted to parse:', cleanedText);
-        throw new Error(`Invalid JSON response from server: ${cleanedText.substring(0, 100)}`);
+        
+        // If it starts with <!DOCTYPE, it's definitely HTML
+        if (cleanedText.startsWith('<!DOCTYPE') || cleanedText.startsWith('<html')) {
+          throw new Error('Received HTML instead of JSON. Your session may have expired. Please refresh the page.');
+        } else {
+          throw new Error(`Invalid JSON response from server`);
+        }
       }
       
       if (response.ok) {
@@ -160,20 +182,47 @@ export function BulkCategoryUpdate({ categories }: BulkCategoryUpdateProps) {
           .join(', ')
       );
       
+      // Check if the content type indicates HTML (likely an error page)
+      const contentType = response.headers.get('content-type');
+      console.log('Update response Content-Type:', contentType);
+      
+      if (contentType && contentType.includes('text/html')) {
+        console.error('Received HTML instead of JSON in update response - likely a session error');
+        throw new Error('Your session may have expired. Please refresh the page and try again.');
+      }
+      
       // Get response as text first
       const responseText = await response.text();
       console.log('Update response text:', responseText);
       
+      // If we got an empty response or a non-200 status
+      if (!responseText.trim()) {
+        if (response.status === 401 || response.status === 403) {
+          throw new Error('Authentication error. Please log in again.');
+        } else {
+          throw new Error(`Server error: ${response.status}. Please try again.`);
+        }
+      }
+      
       let data;
       try {
-        // Parse the JSON response if there's content
-        if (responseText.trim()) {
+        // Parse the JSON response if there's content and it looks like JSON
+        if (responseText.trim() && (responseText.trim().startsWith('{') || responseText.trim().startsWith('['))) {
           data = JSON.parse(responseText.trim());
           console.log('Parsed update response data:', data);
+        } else {
+          console.error('Response does not appear to be valid JSON:', responseText);
+          
+          // If it starts with <!DOCTYPE, it's definitely HTML
+          if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+            throw new Error('Received HTML instead of JSON. Your session may have expired. Please refresh the page.');
+          } else {
+            throw new Error('Invalid response format from server');
+          }
         }
       } catch (parseError) {
         console.error('Error parsing update response:', parseError);
-        throw new Error(`Invalid JSON in update response: ${responseText.substring(0, 100)}`);
+        throw new Error(`Invalid JSON in update response`);
       }
       
       if (response.ok) {
