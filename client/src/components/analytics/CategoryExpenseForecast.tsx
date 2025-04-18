@@ -1,10 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Transaction, Account } from '@shared/schema';
 import { formatCurrency } from '@/lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import { addDays, addMonths, format, isWithinInterval, isSameDay, parseISO, subMonths, isAfter, isBefore } from 'date-fns';
 import { transactionCategories } from '@shared/schema';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover';
+import { Settings2, Check } from 'lucide-react';
 
 interface CategoryExpenseForecastProps {
   transactions: Transaction[];
@@ -38,6 +47,38 @@ const baseColors = [
 });
 
 export function CategoryExpenseForecast({ transactions, isLoading }: CategoryExpenseForecastProps) {
+  // Initialize state to store all expense categories found in transactions
+  const [availableCategories, setAvailableCategories] = React.useState<string[]>([]);
+  
+  // State to track which categories are selected for non-recurring expense calculation
+  const [selectedCategories, setSelectedCategories] = React.useState<Record<string, boolean>>({});
+  
+  // Extract all expense categories from transactions
+  React.useEffect(() => {
+    if (!transactions.length) return;
+    
+    const categories = new Set<string>();
+    transactions.forEach(tx => {
+      if (tx.type === 'Expense' && tx.category) {
+        categories.add(tx.category);
+      }
+    });
+    
+    // Add "Other" category
+    categories.add('Other');
+    
+    const categoryArray = Array.from(categories);
+    setAvailableCategories(categoryArray);
+    
+    // Initialize all categories as selected by default
+    const initialSelectedState: Record<string, boolean> = {};
+    categoryArray.forEach(category => {
+      initialSelectedState[category] = true;
+    });
+    
+    setSelectedCategories(initialSelectedState);
+  }, [transactions]);
+  
   // Generate forecast data for the next 6 months by category
   const forecastData = React.useMemo(() => {
     if (!transactions.length) return [];
@@ -131,7 +172,7 @@ export function CategoryExpenseForecast({ transactions, isLoading }: CategoryExp
       }
     });
     
-    // Process non-recurring transactions to find patterns
+    // Process non-recurring transactions to find patterns, but only for selected categories
     const nonRecurringByCategory: Record<string, number[]> = {};
     const pastExpenseTransactions = transactions.filter(tx => 
       tx.type === 'Expense' && 
@@ -143,6 +184,10 @@ export function CategoryExpenseForecast({ transactions, isLoading }: CategoryExp
     pastExpenseTransactions.forEach(tx => {
       const txDate = tx.date instanceof Date ? tx.date : parseISO(String(tx.date));
       const category = tx.category || 'Other';
+      
+      // Skip categories that are not selected for non-recurring forecasting
+      if (!selectedCategories[category]) return;
+      
       const monthsAgo = Math.floor((today.getTime() - txDate.getTime()) / (1000 * 60 * 60 * 24 * 30));
       
       // Initialize if not exists
@@ -158,6 +203,9 @@ export function CategoryExpenseForecast({ transactions, isLoading }: CategoryExp
     
     // Calculate average monthly expenses by category (from most recent 3 months)
     Object.keys(nonRecurringByCategory).forEach(category => {
+      // Skip if somehow the category is no longer selected
+      if (!selectedCategories[category]) return;
+      
       const last3MonthsSum = nonRecurringByCategory[category].slice(0, 3).reduce((sum, val) => sum + val, 0);
       const avgMonthlyExpense = last3MonthsSum / 3;
       
@@ -197,7 +245,7 @@ export function CategoryExpenseForecast({ transactions, isLoading }: CategoryExp
     });
     
     return result;
-  }, [transactions]);
+  }, [transactions, selectedCategories]);
 
   // Create array of categories found in the data for the chart
   const categories = React.useMemo(() => {
@@ -210,11 +258,84 @@ export function CategoryExpenseForecast({ transactions, isLoading }: CategoryExp
   return (
     <Card className="bg-white">
       <CardHeader className="space-y-1">
-        <CardTitle>Expense Category Forecast</CardTitle>
-        <CardDescription>6-month projection of expenses by category</CardDescription>
-        <p className="text-xs text-muted-foreground">
-          Based on recurring transactions and historical spending patterns
-        </p>
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle>Expense Category Forecast</CardTitle>
+            <CardDescription>6-month projection of expenses by category</CardDescription>
+            <p className="text-xs text-muted-foreground">
+              Based on recurring transactions and historical spending patterns
+            </p>
+          </div>
+          
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 gap-1">
+                <Settings2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Customize</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[220px] p-4" align="end">
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm">Non-recurring Categories</h4>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Select which categories to include in non-recurring expense forecasts
+                </p>
+                
+                <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
+                  {availableCategories.map(category => (
+                    <div key={category} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`category-${category}`} 
+                        checked={selectedCategories[category] || false}
+                        onCheckedChange={(checked) => {
+                          setSelectedCategories(prev => ({
+                            ...prev,
+                            [category]: checked === true
+                          }));
+                        }}
+                      />
+                      <Label
+                        htmlFor={`category-${category}`}
+                        className="text-sm cursor-pointer flex-1 truncate"
+                      >
+                        {category}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="flex justify-between pt-2 mt-2 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const newState: Record<string, boolean> = {};
+                      availableCategories.forEach(cat => {
+                        newState[cat] = true;
+                      });
+                      setSelectedCategories(newState);
+                    }}
+                  >
+                    Select All
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const newState: Record<string, boolean> = {};
+                      availableCategories.forEach(cat => {
+                        newState[cat] = false;
+                      });
+                      setSelectedCategories(newState);
+                    }}
+                  >
+                    Clear All
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (

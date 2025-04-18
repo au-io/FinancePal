@@ -1,9 +1,18 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Transaction, Account } from '@shared/schema';
 import { formatCurrency } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { addDays, addMonths, format, isWithinInterval, isSameDay, parseISO, subMonths, isAfter, isBefore } from 'date-fns';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover';
+import { Settings2, Check } from 'lucide-react';
 
 interface ExtendedCashFlowForecastProps {
   transactions: Transaction[];
@@ -12,6 +21,38 @@ interface ExtendedCashFlowForecastProps {
 }
 
 export function ExtendedCashFlowForecast({ transactions, accounts, isLoading }: ExtendedCashFlowForecastProps) {
+  // Initialize state to store all expense categories found in transactions
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  
+  // State to track which categories are selected for non-recurring expense calculation
+  const [selectedCategories, setSelectedCategories] = useState<Record<string, boolean>>({});
+  
+  // Extract all expense categories from transactions
+  useEffect(() => {
+    if (!transactions.length) return;
+    
+    const categories = new Set<string>();
+    transactions.forEach(tx => {
+      if (tx.type === 'Expense' && tx.category) {
+        categories.add(tx.category);
+      }
+    });
+    
+    // Add "Other" category
+    categories.add('Other');
+    
+    const categoryArray = Array.from(categories);
+    setAvailableCategories(categoryArray);
+    
+    // Initialize all categories as selected by default
+    const initialSelectedState: Record<string, boolean> = {};
+    categoryArray.forEach(category => {
+      initialSelectedState[category] = true;
+    });
+    
+    setSelectedCategories(initialSelectedState);
+  }, [transactions]);
+  
   // Generate forecast data for the next 6 months (180 days)
   const forecastData = React.useMemo(() => {
     if (!transactions.length || !accounts.length) return [];
@@ -28,10 +69,15 @@ export function ExtendedCashFlowForecast({ transactions, accounts, isLoading }: 
     let cumulativeExpenses = 0;
     
     // Calculate average daily non-recurring expenses from the past 3 months
+    // but only for selected categories
     const threeMonthsAgo = subMonths(today, 3);
     const pastNonRecurringExpenses = transactions.filter(tx => {
       if (tx.isRecurring) return false;
       if (tx.type !== 'Expense') return false;
+      
+      // Filter by selected categories
+      const category = tx.category || 'Other';
+      if (!selectedCategories[category]) return false;
       
       const txDate = tx.date instanceof Date ? tx.date : parseISO(String(tx.date));
       return isAfter(txDate, threeMonthsAgo) && isBefore(txDate, today);
@@ -186,16 +232,89 @@ export function ExtendedCashFlowForecast({ transactions, accounts, isLoading }: 
     }
     
     return data;
-  }, [transactions, accounts]);
+  }, [transactions, accounts, selectedCategories]);
 
   return (
     <Card className="bg-white">
       <CardHeader className="space-y-1">
-        <CardTitle>Extended Financial Forecast</CardTitle>
-        <CardDescription>6-month projection with historical expense patterns</CardDescription>
-        <p className="text-xs text-muted-foreground">
-          Incorporates both recurring transactions and average non-recurring expenses from past 3 months
-        </p>
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle>Extended Financial Forecast</CardTitle>
+            <CardDescription>6-month projection with historical expense patterns</CardDescription>
+            <p className="text-xs text-muted-foreground">
+              Incorporates both recurring transactions and average non-recurring expenses from past 3 months
+            </p>
+          </div>
+          
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 gap-1">
+                <Settings2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Customize</span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[220px] p-4" align="end">
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm">Non-recurring Categories</h4>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Select which categories to include in non-recurring expense forecasts
+                </p>
+                
+                <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
+                  {availableCategories.map(category => (
+                    <div key={category} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={`forecast-category-${category}`} 
+                        checked={selectedCategories[category] || false}
+                        onCheckedChange={(checked) => {
+                          setSelectedCategories(prev => ({
+                            ...prev,
+                            [category]: checked === true
+                          }));
+                        }}
+                      />
+                      <Label
+                        htmlFor={`forecast-category-${category}`}
+                        className="text-sm cursor-pointer flex-1 truncate"
+                      >
+                        {category}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="flex justify-between pt-2 mt-2 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const newState: Record<string, boolean> = {};
+                      availableCategories.forEach(cat => {
+                        newState[cat] = true;
+                      });
+                      setSelectedCategories(newState);
+                    }}
+                  >
+                    Select All
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const newState: Record<string, boolean> = {};
+                      availableCategories.forEach(cat => {
+                        newState[cat] = false;
+                      });
+                      setSelectedCategories(newState);
+                    }}
+                  >
+                    Clear All
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
