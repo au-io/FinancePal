@@ -2,11 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Hide debug element labels that start with account_ or credit_ */
-[id^="account_"],
-[id^="account_balance"],
-[id^="credit_"],
-[id^="credit_card"] {
+/* Hide debug element labels that start with account_ or credit_ 
+   This requires very aggressive CSS to override Replit's debug display */
+*[id^="account_"],
+*[id^="account_balance"],
+*[id^="credit_"],
+*[id^="credit_card"] {
   display: none !important;
   position: absolute !important;
   visibility: hidden !important;
@@ -19,6 +20,18 @@
   clip-path: inset(50%) !important;
   white-space: nowrap !important;
   opacity: 0 !important;
+  z-index: -9999 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+}
+
+/* Hide the default account row class */
+.account-row span,
+.account-row div {
+  position: relative !important;
+  z-index: 100 !important;
 }
 
 @layer base {

@@ -4,7 +4,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { formatCurrency } from '@/lib/utils';
 import { ViewToggle } from '@/components/layout/ViewToggle';
-import { CleanAccountDisplay } from '@/components/analytics/CleanAccountDisplay';
+import { FixedAccountList } from '@/components/analytics/FixedAccountList';
 import { SimplifiedSpendingAnalytics } from '@/components/analytics/SimplifiedSpendingAnalytics';
 import { SubscriptionAnalytics } from '@/components/analytics/SubscriptionAnalytics';
 import { TransactionCalendar } from '@/components/dashboard/TransactionCalendar';
@@ -216,7 +216,7 @@ export default function Analytics() {
                 </Card>
               }
             >
-              <CleanAccountDisplay 
+              <FixedAccountList 
                 transactions={Array.isArray(transactions) ? transactions : []} 
                 accounts={Array.isArray(accounts) ? accounts : []} 
                 isPersonalView={isPersonalView}

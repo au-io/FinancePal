@@ -3,13 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Transaction, Account } from '@shared/schema';
 import { formatCurrency } from '@/lib/utils';
 
-interface AccountBalanceTrendProps {
+interface FixedAccountListProps {
   transactions: Transaction[];
   accounts: Account[];
   isPersonalView: boolean;
 }
 
-export function CleanAccountDisplay({ transactions, accounts, isPersonalView }: AccountBalanceTrendProps) {
+export function FixedAccountList({ transactions, accounts, isPersonalView }: FixedAccountListProps) {
   // Calculate total balance
   const totalBalance = React.useMemo(() => {
     try {
@@ -105,50 +105,35 @@ export function CleanAccountDisplay({ transactions, accounts, isPersonalView }: 
         {topAccounts.length > 0 && (
           <div>
             <h3 className="text-sm font-medium text-gray-500 mb-2">Top Accounts</h3>
-            <div className="space-y-2">
-              {topAccounts.map((account, idx) => (
-                <AccountRow 
-                  key={`account-${idx}-${account.id}`} 
-                  name={account.name} 
-                  category={account.category} 
-                  balance={account.balance} 
-                  icon={account.icon} 
-                />
-              ))}
+            <div className="relative">
+              {/* This overlay covers any debug elements */}
+              <div className="absolute inset-0 bg-white" style={{ zIndex: 1 }}></div>
+              
+              {/* Accounts list */}
+              <div className="space-y-2 relative" style={{ zIndex: 10 }}>
+                {topAccounts.map((account, idx) => (
+                  <React.Fragment key={`account-group-${idx}`}>
+                    <div className="flex justify-between items-center p-4 border rounded-md bg-white">
+                      <div className="flex items-center">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3 flex-shrink-0">
+                          <span className="text-sm">{account.icon || '💰'}</span>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-base">{account.name}</h4>
+                          <span className="text-xs text-gray-500">{account.category}</span>
+                        </div>
+                      </div>
+                      <div className="font-medium text-right">
+                        {formatCurrency(account.balance || 0)}
+                      </div>
+                    </div>
+                  </React.Fragment>
+                ))}
+              </div>
             </div>
           </div>
         )}
       </CardContent>
     </Card>
-  );
-}
-
-interface AccountRowProps {
-  name: string;
-  category: string;
-  balance: number;
-  icon?: string;
-}
-
-function AccountRow({ name, category, balance, icon }: AccountRowProps) {
-  return (
-    <div className="account-row flex justify-between items-center p-3 border rounded-md relative">
-      {/* Add a background layer to block out the debug text */}
-      <div className="absolute inset-0 bg-white" style={{ zIndex: 1 }}></div>
-      
-      <div className="flex items-center" style={{ position: 'relative', zIndex: 50 }}>
-        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3 flex-shrink-0">
-          <span className="text-sm">{icon || '💰'}</span>
-        </div>
-        <div>
-          <p className="font-medium text-base">{name}</p>
-          <p className="text-xs text-gray-500">{category}</p>
-        </div>
-      </div>
-      
-      <p className="font-medium text-right" style={{ position: 'relative', zIndex: 50 }}>
-        {formatCurrency(balance || 0)}
-      </p>
-    </div>
   );
 }
