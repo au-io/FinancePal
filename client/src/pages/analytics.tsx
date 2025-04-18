@@ -8,6 +8,7 @@ import { CanvasAccountList } from '@/components/analytics/CanvasAccountList';
 import { SimplifiedSpendingAnalytics } from '@/components/analytics/SimplifiedSpendingAnalytics';
 import { SubscriptionAnalytics } from '@/components/analytics/SubscriptionAnalytics';
 import { TransactionCalendar } from '@/components/dashboard/TransactionCalendar';
+import { ExtendedCashFlowForecast } from '@/components/analytics/ExtendedCashFlowForecast';
 import { Loader2 } from 'lucide-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import {
@@ -237,6 +238,14 @@ export default function Analytics() {
                 />
               </ErrorBoundary>
             </div>
+            
+            <ErrorBoundary componentName="Extended Cash Flow Forecast">
+              <ExtendedCashFlowForecast
+                transactions={Array.isArray(transactions) ? transactions : []}
+                accounts={Array.isArray(accounts) ? accounts : []}
+                isLoading={isLoading}
+              />
+            </ErrorBoundary>
             
             <ErrorBoundary componentName="Spending Analytics">
               <SimplifiedSpendingAnalytics 
