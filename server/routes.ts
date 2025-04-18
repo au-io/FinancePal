@@ -613,70 +613,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Category name is required" });
       }
       
-      // Get the current user
-      const user = await storage.getUser(req.user!.id);
+      // Instead of storing categories on the user model, just verify if it's already in use
+      // Check if any transaction is using this category
+      const userId = req.user!.id;
+      const transactions = await storage.getTransactionsByUserId(userId);
       
-      // Check if the category already exists in custom categories
-      if (user && user.customCategories && Array.isArray(user.customCategories)) {
-        if (user.customCategories.includes(name.trim())) {
-          return res.status(409).json({ message: "Category already exists" });
-        }
-        
-        // Add the category to user's custom categories
-        const updatedCategories = [...user.customCategories, name.trim()];
-        await storage.updateUser(user.id, { customCategories: updatedCategories });
-        
-        return res.status(201).json({ 
-          success: true,
-          category: name.trim(),
-          message: "Category added successfully"
-        });
-      } else {
-        // Initialize custom categories array if it doesn't exist
-        await storage.updateUser(req.user!.id, { customCategories: [name.trim()] });
-        
-        return res.status(201).json({ 
-          success: true,
-          category: name.trim(),
-          message: "Category added successfully"
-        });
+      // If we find this category in any existing transaction, it's already in use
+      const categoryExists = transactions.some(t => t.category === name.trim());
+      
+      if (categoryExists) {
+        return res.status(409).json({ message: "Category already exists" });
       }
+      
+      // No need to store the category separately, it will be stored with the first transaction
+      return res.status(201).json({ 
+        success: true,
+        category: name.trim(),
+        message: "Category added successfully"
+      });
     } catch (error) {
-      next(error);
+      console.error('Error in create category endpoint:', error);
+      res.status(500).json({ 
+        error: 'An error occurred while adding the category',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
   
   app.get("/api/categories/:category/count", requireAuth, async (req, res, next) => {
     try {
+      console.log(`Processing category count for: ${req.params.category}`);
+      
       // Decode the category name to handle spaces and special characters
       const category = decodeURIComponent(req.params.category);
+      console.log(`Decoded category: "${category}"`);
+      
       let count = 0;
       
       // Get user's transactions first
       const userTransactions = await storage.getTransactionsByUserId(req.user!.id);
+      console.log(`Found ${userTransactions.length} user transactions`);
+      
       count = userTransactions.filter(t => t.category === category).length;
+      console.log(`${count} user transactions match category "${category}"`);
       
       // If user is in a family, also count family transactions
       if (req.user!.familyId) {
+        console.log(`User is in family ID: ${req.user!.familyId}`);
         const familyTransactions = await storage.getTransactionsByFamilyId(req.user!.familyId);
+        console.log(`Found ${familyTransactions.length} family transactions`);
+        
         // Only count family transactions that aren't already counted
         const additionalCount = familyTransactions.filter(
           t => t.category === category && t.userId !== req.user!.id
         ).length;
+        console.log(`${additionalCount} additional family transactions match category "${category}"`);
+        
         count += additionalCount;
+      } else {
+        console.log('User is not in a family');
       }
       
+      console.log(`Total count for category "${category}": ${count}`);
       res.json({ count });
     } catch (error) {
-      next(error);
+      console.error('Error in category count endpoint:', error);
+      res.status(500).json({ 
+        error: 'An error occurred while counting transactions',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
   
   app.post("/api/categories/update-transactions", requireAuth, async (req, res, next) => {
     try {
+      console.log('Category update request body:', req.body);
       const { oldCategory, newCategory } = req.body;
       
       if (!oldCategory || !newCategory) {
+        console.error('Missing required parameters:', { oldCategory, newCategory });
         return res.status(400).json({ message: "Both oldCategory and newCategory are required" });
       }
       
@@ -685,30 +700,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get user's transactions first
       const userTransactions = await storage.getTransactionsByUserId(req.user!.id);
+      console.log(`Found ${userTransactions.length} user transactions`);
+      
       affectedTransactions = userTransactions.filter(t => t.category === oldCategory);
+      console.log(`${affectedTransactions.length} user transactions match old category "${oldCategory}"`);
       
       // If user is in a family, also get family transactions
       if (req.user!.familyId) {
+        console.log(`User is in family ID: ${req.user!.familyId}`);
         const familyTransactions = await storage.getTransactionsByFamilyId(req.user!.familyId);
+        console.log(`Found ${familyTransactions.length} family transactions`);
+        
         // Only add family transactions that aren't already counted
         const additionalTransactions = familyTransactions.filter(
           t => t.category === oldCategory && t.userId !== req.user!.id
         );
+        console.log(`${additionalTransactions.length} additional family transactions match old category "${oldCategory}"`);
+        
         affectedTransactions = [...affectedTransactions, ...additionalTransactions];
+      } else {
+        console.log('User is not in a family');
       }
 
+      console.log(`Total transactions to update: ${affectedTransactions.length}`);
+      
       // Update all transactions with the old category to use the new category
+      const updatedTransactions = [];
       for (const transaction of affectedTransactions) {
-        await storage.updateTransaction(transaction.id, { category: newCategory });
+        try {
+          const updated = await storage.updateTransaction(transaction.id, { category: newCategory });
+          if (updated) {
+            updatedTransactions.push(updated);
+          }
+        } catch (updateError) {
+          console.error(`Error updating transaction ${transaction.id}:`, updateError);
+        }
       }
+      
+      console.log(`Successfully updated ${updatedTransactions.length} out of ${affectedTransactions.length} transactions`);
       
       res.json({ 
         success: true, 
-        message: `Updated ${affectedTransactions.length} transactions from category "${oldCategory}" to "${newCategory}"`,
-        count: affectedTransactions.length
+        message: `Updated ${updatedTransactions.length} transactions from category "${oldCategory}" to "${newCategory}"`,
+        count: updatedTransactions.length
       });
     } catch (error) {
-      next(error);
+      console.error('Error in update transactions endpoint:', error);
+      res.status(500).json({ 
+        error: 'An error occurred while updating transactions',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
   

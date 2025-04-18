@@ -43,14 +43,30 @@ export function BulkCategoryUpdate({ categories }: BulkCategoryUpdateProps) {
     setIsCheckingCount(true);
     
     try {
+      console.log('Starting check for category:', sourceCategory);
+      
       // Encode the category name to handle spaces and special characters
       const encodedCategory = encodeURIComponent(sourceCategory);
+      console.log('Encoded category:', encodedCategory);
+      
       const response = await fetch(`/api/categories/${encodedCategory}/count`, {
         credentials: 'include'
       });
       
+      console.log('Response status:', response.status);
+      const responseText = await response.text();
+      console.log('Response text:', responseText);
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Error parsing JSON response:', parseError);
+        throw new Error('Invalid JSON response from server');
+      }
+      
       if (response.ok) {
-        const data = await response.json();
+        console.log('Parsed data:', data);
         setAffectedCount(data.count);
         
         if (data.count > 0) {
@@ -63,9 +79,10 @@ export function BulkCategoryUpdate({ categories }: BulkCategoryUpdateProps) {
           });
         }
       } else {
+        console.error('Server responded with error:', data);
         toast({
           title: "Error checking transactions",
-          description: "Failed to check affected transactions. Please try again.",
+          description: data.message || "Failed to check affected transactions. Please try again.",
           variant: "destructive"
         });
       }
@@ -73,7 +90,7 @@ export function BulkCategoryUpdate({ categories }: BulkCategoryUpdateProps) {
       console.error('Error checking transactions:', error);
       toast({
         title: "Error",
-        description: "An error occurred while checking affected transactions.",
+        description: error instanceof Error ? error.message : "An error occurred while checking affected transactions.",
         variant: "destructive"
       });
     } finally {
