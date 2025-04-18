@@ -44,9 +44,29 @@ export function CategoryProvider({ children }: { children: ReactNode }) {
     setCustomCategories(prev => [...prev, trimmedCategory]);
   };
 
-  // Remove a category
-  const removeCategory = (category: string) => {
-    setCustomCategories(prev => prev.filter(cat => cat !== category));
+  // Remove a category and update associated transactions
+  const removeCategory = async (category: string) => {
+    try {
+      // Update all transactions with this category to use "Other"
+      await fetch('/api/categories/update-transactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          oldCategory: category,
+          newCategory: 'Other'
+        }),
+        credentials: 'include'
+      });
+      
+      // Then remove the category
+      setCustomCategories(prev => prev.filter(cat => cat !== category));
+    } catch (error) {
+      console.error('Error updating transactions for deleted category:', error);
+      // Still remove the category from the list even if transaction update fails
+      setCustomCategories(prev => prev.filter(cat => cat !== category));
+    }
   };
 
   // Get all categories (system + custom)

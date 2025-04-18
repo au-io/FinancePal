@@ -52,22 +52,52 @@ export default function Categories() {
     });
   };
   
+  // State to track affected transactions count
+  const [affectedTransactionsCount, setAffectedTransactionsCount] = useState<number>(0);
+  const [isCheckingTransactions, setIsCheckingTransactions] = useState<boolean>(false);
+
   // Function to remove a custom category
-  const handleDeleteCategory = (category: string) => {
+  const handleDeleteCategory = async (category: string) => {
+    setIsCheckingTransactions(true);
+    
+    try {
+      // Check how many transactions use this category
+      const response = await fetch(`/api/categories/${category}/count`, {
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAffectedTransactionsCount(data.count);
+      } else {
+        console.error('Failed to get transaction count');
+        setAffectedTransactionsCount(0);
+      }
+    } catch (error) {
+      console.error('Error checking affected transactions:', error);
+      setAffectedTransactionsCount(0);
+    } finally {
+      setIsCheckingTransactions(false);
+    }
+    
     setCategoryToDelete(category);
   };
   
   // Confirm deletion
-  const confirmDeleteCategory = () => {
+  const confirmDeleteCategory = async () => {
     if (categoryToDelete) {
-      removeCategory(categoryToDelete);
+      // The actual category removal and transaction updates are done in the useCategories hook
+      await removeCategory(categoryToDelete);
       
       toast({
         title: "Category removed",
-        description: `Category "${categoryToDelete}" has been removed.`
+        description: affectedTransactionsCount > 0 
+          ? `Category "${categoryToDelete}" has been removed. ${affectedTransactionsCount} transactions were updated to use the "Other" category.`
+          : `Category "${categoryToDelete}" has been removed.`
       });
       
       setCategoryToDelete(null);
+      setAffectedTransactionsCount(0);
     }
   };
   
@@ -146,14 +176,31 @@ export default function Categories() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will remove the category "{categoryToDelete}". This action cannot be undone.
+              <AlertDialogDescription className="space-y-2">
+                <p>This will remove the category "{categoryToDelete}". This action cannot be undone.</p>
+                
+                {isCheckingTransactions ? (
+                  <p className="text-muted-foreground">Checking affected transactions...</p>
+                ) : affectedTransactionsCount > 0 ? (
+                  <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                    <p className="font-medium text-amber-800">Warning: This will affect {affectedTransactionsCount} transactions</p>
+                    <p className="text-amber-700 text-sm mt-1">
+                      These transactions will have their category changed to "Other".
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">No transactions are using this category.</p>
+                )}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmDeleteCategory} className="bg-destructive text-destructive-foreground">
-                Delete
+              <AlertDialogAction 
+                onClick={confirmDeleteCategory} 
+                className="bg-destructive text-destructive-foreground"
+                disabled={isCheckingTransactions}
+              >
+                {isCheckingTransactions ? 'Checking...' : 'Delete'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

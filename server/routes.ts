@@ -604,6 +604,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(enhancedTransactions);
   });
   
+  // Category operations
+  app.get("/api/categories/:category/count", requireAuth, async (req, res, next) => {
+    try {
+      const category = req.params.category;
+      let count = 0;
+      
+      // Get user's transactions first
+      const userTransactions = await storage.getTransactionsByUserId(req.user!.id);
+      count = userTransactions.filter(t => t.category === category).length;
+      
+      // If user is in a family, also count family transactions
+      if (req.user!.familyId) {
+        const familyTransactions = await storage.getTransactionsByFamilyId(req.user!.familyId);
+        // Only count family transactions that aren't already counted
+        const additionalCount = familyTransactions.filter(
+          t => t.category === category && t.userId !== req.user!.id
+        ).length;
+        count += additionalCount;
+      }
+      
+      res.json({ count });
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  app.post("/api/categories/update-transactions", requireAuth, async (req, res, next) => {
+    try {
+      const { oldCategory, newCategory } = req.body;
+      
+      if (!oldCategory || !newCategory) {
+        return res.status(400).json({ message: "Both oldCategory and newCategory are required" });
+      }
+      
+      // Count affected transactions first
+      let affectedTransactions = [];
+      
+      // Get user's transactions first
+      const userTransactions = await storage.getTransactionsByUserId(req.user!.id);
+      affectedTransactions = userTransactions.filter(t => t.category === oldCategory);
+      
+      // If user is in a family, also get family transactions
+      if (req.user!.familyId) {
+        const familyTransactions = await storage.getTransactionsByFamilyId(req.user!.familyId);
+        // Only add family transactions that aren't already counted
+        const additionalTransactions = familyTransactions.filter(
+          t => t.category === oldCategory && t.userId !== req.user!.id
+        );
+        affectedTransactions = [...affectedTransactions, ...additionalTransactions];
+      }
+
+      // Update all transactions with the old category to use the new category
+      for (const transaction of affectedTransactions) {
+        await storage.updateTransaction(transaction.id, { category: newCategory });
+      }
+      
+      res.json({ 
+        success: true, 
+        message: `Updated ${affectedTransactions.length} transactions from category "${oldCategory}" to "${newCategory}"`,
+        count: affectedTransactions.length
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+  
   // CSV Templates
   app.get("/api/templates/regular-transactions", requireAuth, (req, res) => {
     const today = new Date().toISOString().split('T')[0];
