@@ -1,6 +1,6 @@
 import React from 'react';
-import iconPath from "@assets/icon_1744477817841.png";
 
+// Using a self-contained SVG for the Apple-style logo to avoid image loading issues
 export function Logo({ size = 'medium' }: { size?: 'small' | 'medium' | 'large' }) {
   const sizes = {
     small: 'w-6 h-6',
@@ -9,11 +9,21 @@ export function Logo({ size = 'medium' }: { size?: 'small' | 'medium' | 'large' 
   };
 
   return (
-    <img 
-      src={iconPath} 
-      alt="JoBa Finance Logo" 
-      className={`${sizes[size]} object-contain`}
-    />
+    <svg 
+      className={`${sizes[size]}`} 
+      viewBox="0 0 100 100" 
+      xmlns="http://www.w3.org/2000/svg"
+      aria-label="JoBudget Logo"
+    >
+      {/* Simple circular background */}
+      <circle cx="50" cy="50" r="45" fill="#000" />
+      
+      {/* Letter J in Apple SF Pro Display-like font style */}
+      <text x="50" y="65" fontFamily="SF Pro Display, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" fontSize="60" fontWeight="600" fill="#fff" textAnchor="middle">J</text>
+      
+      {/* Small B for Budget */}
+      <text x="65" y="32" fontFamily="SF Pro Display, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" fontSize="24" fontWeight="400" fill="#fff" textAnchor="middle">B</text>
+    </svg>
   );
 }
 
@@ -41,11 +51,11 @@ export function LogoWithText({
     <div className="flex items-center">
       <Logo size={size} />
       <div className="ml-2">
-        <h1 className={`${textSizes[textSize]} font-bold text-primary`}>
-          JoBa Finance
+        <h1 className={`${textSizes[textSize]} font-semibold tracking-tight text-primary`}>
+          JoBudget
         </h1>
         {withSubtitle && (
-          <p className="text-xs text-gray-500">Family Finance Management</p>
+          <p className="text-xs text-gray-500 tracking-tight">Smart Finance Management</p>
         )}
       </div>
     </div>

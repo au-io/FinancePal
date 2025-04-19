@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Simple circular background -->
+  <circle cx="50" cy="50" r="45" fill="#000" />
+  
+  <!-- Letter J in Apple SF Pro Display-like font style -->
+  <text x="50" y="65" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="60" font-weight="600" fill="#fff" text-anchor="middle">J</text>
+  
+  <!-- Small B for Budget -->
+  <text x="65" y="32" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="24" font-weight="400" fill="#fff" text-anchor="middle">B</text>
+</svg>
