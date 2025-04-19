@@ -837,6 +837,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     res.send(csvContent);
   });
+  
+  // Unified template for all transaction types (Income, Expense, Transfer)
+  app.get("/api/templates/unified-transactions", requireAuth, async (req, res) => {
+    const userId = req.user!.id;
+    const accounts = await storage.getAccountsByUserId(userId);
+    
+    // If user has fewer than 2 accounts, provide generic account names
+    const sourceAccountName = accounts.length > 0 ? accounts[0].name : "Checking Account";
+    const destAccountName = accounts.length > 1 ? accounts[1].name : "Savings Account";
+    
+    // Get all account names for documentation
+    const accountNames = accounts.map(a => `"${a.name}"`).join(", ");
+    const accountsInfo = accountNames || "You need to create accounts first";
+    
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Start with a documentation row that explains valid values
+    let csvContent = "# JoBa Finance - Unified Transaction Import Template\n";
+    csvContent += "# Date Format: YYYY-MM-DD (e.g., 2025-04-18)\n";
+    csvContent += "# Type: Must be one of: 'Income', 'Expense', or 'Transfer'\n";
+    csvContent += "# Category: Housing, Transportation, Food, Utilities, Insurance, Healthcare, Savings, Personal, Entertainment, Education, Debt, Gifts, Salary, Business, Other\n";
+    csvContent += "# Amount: Always use POSITIVE numbers regardless of transaction type\n";
+    csvContent += "# DestinationAccount: Only required for Transfer transactions. For Income/Expense, leave blank or omit.\n";
+    csvContent += `# Available accounts: ${accountsInfo}\n`;
+    csvContent += "#\n";
+    
+    // Add header row
+    csvContent += "Date,Type,Category,Description,Amount,DestinationAccount\n";
+    
+    // Add example rows
+    const exampleRows = [
+      // Income examples
+      `${today},Income,Salary,"Monthly Salary",1500,`,
+      `${today},Income,Business,"Freelance payment",250,`,
+      
+      // Expense examples
+      `${today},Expense,Food,"Grocery shopping",85.50,`,
+      `${today},Expense,Transportation,"Gas for car",50.25,`,
+      `${today},Expense,Utilities,"Electricity bill",120,`,
+      
+      // Transfer examples
+      `${today},Transfer,Transfer,"Transfer to savings",100,"${destAccountName}"`,
+      `${today},Transfer,Transfer,"Emergency fund",50,"${destAccountName}"`
+    ];
+    
+    csvContent += exampleRows.join("\n");
+    
+    // Set headers for file download
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=unified-transactions-template.csv');
+    
+    res.send(csvContent);
+  });
 
   // CSV Export
   app.get("/api/export/transactions", requireAuth, async (req, res) => {

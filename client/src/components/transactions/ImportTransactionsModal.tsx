@@ -547,6 +547,34 @@ export function ImportTransactionsModal({
                     <Download className="h-3 w-3 mr-1" />
                     Transfer
                   </Button>
+                  
+                  <Button 
+                    type="button" 
+                    size="sm" 
+                    variant="outline"
+                    className="text-xs h-8"
+                    onClick={async () => {
+                      try {
+                        await downloadFileFromApi(
+                          '/api/templates/unified-transactions',
+                          'unified-transactions-template.csv'
+                        );
+                        toast({
+                          title: 'Template downloaded',
+                          description: 'Unified transactions template downloaded successfully.'
+                        });
+                      } catch (error) {
+                        toast({
+                          title: 'Download failed',
+                          description: error instanceof Error ? error.message : 'Failed to download template',
+                          variant: 'destructive',
+                        });
+                      }
+                    }}
+                  >
+                    <Download className="h-3 w-3 mr-1" />
+                    Unified (New!)
+                  </Button>
                 </div>
               </div>
             </div>
