@@ -858,13 +858,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     csvContent += "# Date Format: YYYY-MM-DD (e.g., 2025-04-18)\n";
     csvContent += "# Type: Must be one of: 'Income', 'Expense', or 'Transfer'\n";
     csvContent += "# Category: Housing, Transportation, Food, Utilities, Insurance, Healthcare, Savings, Personal, Entertainment, Education, Debt, Gifts, Salary, Business, Other\n";
-    csvContent += "# Amount: For Income & Transfer - use POSITIVE numbers, For Expense - use POSITIVE numbers (system will convert to negative)\n";
+    csvContent += "# Amount: Always use POSITIVE numbers for ALL transaction types, including Expenses\n";
+    csvContent += "#        The system will automatically convert Expense amounts to negative values\n";
     csvContent += "# From Account: Account where money comes from (required for all transaction types)\n";
     csvContent += "# To Account: For Income - can be left empty, For Expense - can be left empty, For Transfer - required (destination account)\n";
     csvContent += `# Available accounts: ${accountsInfo}\n`;
     csvContent += "#\n";
     csvContent += "# Logic: \n";
-    csvContent += "# - Expense: Amount will be deducted from 'From Account'\n";
+    csvContent += "# - Expense: Amount will be deducted from 'From Account' (automatically converted to negative)\n";
     csvContent += "# - Income: Amount will be added to 'From Account'\n";
     csvContent += "# - Transfer: Amount will be deducted from 'From Account' and added to 'To Account'\n";
     csvContent += "#\n";
@@ -915,14 +916,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
     
-    // Build CSV header based on transaction types
-    let csvHeader = "Date,Type,Category,Description,Amount,CreatedBy";
-    
-    // Add destination account column if there are any transfer transactions
-    const hasTransfers = transactions.some(tx => tx.type === "Transfer");
-    if (hasTransfers) {
-      csvHeader += ",DestinationAccount";
-    }
+    // Build CSV header with the new format for consistency with import template
+    let csvHeader = "Date,Type,Category,Description,Amount,From Account,To Account,CreatedBy";
     csvHeader += "\n";
     
     const csvRows = await Promise.all(transactions.map(async tx => {
@@ -933,18 +928,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(tx.userId);
       const userName = user ? user.name : "Unknown User";
       
-      let row = `${new Date(tx.date).toISOString().split('T')[0]},${tx.type},${tx.category},"${tx.description || ''}",${tx.amount},"${userName}"`;
-      
-      // Add destination account for transfers
-      if (hasTransfers) {
-        if (tx.type === "Transfer" && tx.destinationAccountId) {
-          const destAccount = await storage.getAccount(tx.destinationAccountId);
-          const destAccountName = destAccount ? destAccount.name : "";
-          row += `,"${destAccountName}"`;
-        } else {
-          row += ",";
-        }
+      // Get destination account name for transfers
+      let destAccountName = "";
+      if (tx.type === "Transfer" && tx.destinationAccountId) {
+        const destAccount = await storage.getAccount(tx.destinationAccountId);
+        destAccountName = destAccount ? destAccount.name : "";
       }
+      
+      // Format row with the new column structure
+      let row = `${new Date(tx.date).toISOString().split('T')[0]},${tx.type},${tx.category},"${tx.description || ''}",${tx.amount},"${sourceAccountName}","${destAccountName}","${userName}"`;
+      
       
       return row;
     }));

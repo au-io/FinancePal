@@ -494,7 +494,7 @@ export function ImportTransactionsModal({
               <ul className="text-xs text-gray-500 list-disc pl-4 space-y-1">
                 <li><strong>From Account</strong>: Required for all transaction types - the account to debit/credit</li>
                 <li><strong>To Account</strong>: Required for Transfer transactions, optional for Income/Expense</li>
-                <li><strong>Amount</strong>: Always use positive numbers (expenses will be converted to negative)</li>
+                <li><strong>Amount</strong>: Always use positive numbers for ALL transaction types, including Expenses</li>
               </ul>
               
               <div className="pt-2">
