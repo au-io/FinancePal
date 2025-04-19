@@ -859,7 +859,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     csvContent += "# Type: Must be one of: 'Income', 'Expense', or 'Transfer'\n";
     csvContent += "# Category: Housing, Transportation, Food, Utilities, Insurance, Healthcare, Savings, Personal, Entertainment, Education, Debt, Gifts, Salary, Business, Other\n";
     csvContent += "# Amount: Always use POSITIVE numbers for ALL transaction types, including Expenses\n";
-    csvContent += "#        The system will automatically convert Expense amounts to negative values\n";
+    csvContent += "#        *** IMPORTANT: The system will automatically convert Expense amounts to negative values ***\n";
+    csvContent += "#        If you provide negative values for Expenses, they may appear with double negative signs\n";
     csvContent += "# From Account: Account where money comes from (required for all transaction types)\n";
     csvContent += "# To Account: For Income - can be left empty, For Expense - can be left empty, For Transfer - required (destination account)\n";
     csvContent += `# Available accounts: ${accountsInfo}\n`;

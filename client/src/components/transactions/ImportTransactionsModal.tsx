@@ -403,7 +403,9 @@ export function ImportTransactionsModal({
             // Create base transaction object - For Expense transactions, convert amount to negative
             let adjustedAmount = amount;
             if (type === 'Expense') {
-              adjustedAmount = -Math.abs(amount); // Always make Expense negative
+              // Check if the amount is already negative (the user might have provided negative values)
+              // If so, keep it as is, otherwise make it negative
+              adjustedAmount = amount < 0 ? amount : -Math.abs(amount);
             }
             
             const transaction: any = {
@@ -543,7 +545,7 @@ export function ImportTransactionsModal({
               <ul className="text-xs text-gray-500 list-disc pl-4 space-y-1">
                 <li><strong>From Account</strong>: Required for all transaction types - the account to debit/credit</li>
                 <li><strong>To Account</strong>: Required for Transfer transactions, optional for Income/Expense</li>
-                <li><strong>Amount</strong>: Always use positive numbers for ALL transaction types, including Expenses</li>
+                <li><strong>Amount</strong>: Always use positive numbers (e.g., 100, not -100) for ALL transaction types, including Expenses</li>
               </ul>
               
               <div className="pt-2">
