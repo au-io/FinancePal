@@ -286,15 +286,38 @@ export function ImportTransactionsModal({
             // Get date and validate
             const dateKey = 'Date' in row ? 'Date' : 'date';
             const dateStr = row[dateKey] ? row[dateKey].trim() : '';
+            
+            if (!dateStr) {
+              throw new Error('Missing date value');
+            }
+            
             let parsedDate;
             
             try {
-              parsedDate = new Date(dateStr);
-              if (isNaN(parsedDate.getTime())) {
-                throw new Error(`Invalid date: "${dateStr}". Use format YYYY-MM-DD.`);
+              // Try various date formats for more flexibility
+              
+              // Clean the date string (remove any weird characters)
+              const cleanDateStr = dateStr.replace(/[^\d\-\.\/\s]/g, '').trim();
+              
+              if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(cleanDateStr)) {
+                // YYYY-MM-DD format (standard)
+                parsedDate = new Date(cleanDateStr);
+              } else if (/^\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{4}$/.test(cleanDateStr)) {
+                // DD/MM/YYYY or MM/DD/YYYY format
+                const parts = cleanDateStr.split(/[\/\-\.]/);
+                // Assume MM/DD/YYYY for American format
+                parsedDate = new Date(`${parts[2]}-${parts[0]}-${parts[1]}`);
+              } else {
+                // Try standard date parsing as fallback
+                parsedDate = new Date(dateStr);
+              }
+              
+              // Validate the parsed date
+              if (!parsedDate || isNaN(parsedDate.getTime())) {
+                throw new Error();
               }
             } catch (e) {
-              throw new Error(`Invalid date: "${dateStr}". Use format YYYY-MM-DD.`);
+              throw new Error(`Invalid date: "${dateStr}". Please use format YYYY-MM-DD.`);
             }
             
             // Normalize and validate transaction type
@@ -327,16 +350,28 @@ export function ImportTransactionsModal({
             const fromAccountKeys = ['From Account', 'from account', 'FromAccount', 'fromaccount'];
             let sourceKey = '';
             for (const key of fromAccountKeys) {
-              if (key in row) {
+              if (key in row && row[key] && row[key].trim() !== '') {
                 sourceKey = key;
                 break;
+              }
+            }
+            
+            // Also check for "From Account" in reverse order (if To Account is first column)
+            if (!sourceKey) {
+              // Try alternate column position - some users may put "From Account" in wrong order
+              const alternateFromAccountKeys = ['From Account', 'from account', 'FromAccount', 'fromaccount'];
+              for (const key of alternateFromAccountKeys) {
+                if (key in row && row[key] && row[key].trim() !== '') {
+                  sourceKey = key;
+                  break;
+                }
               }
             }
             
             // Get transaction source account (required for all transaction types)
             let transactionAccountId = parseInt(accountId); // Default to selected account
             
-            if (sourceKey && row[sourceKey]) {
+            if (sourceKey && row[sourceKey] && row[sourceKey].trim() !== '') {
               const sourceAccountName = row[sourceKey].trim();
               // Find the source account by name
               const sourceAccount = accounts.find(a => 
@@ -354,7 +389,7 @@ export function ImportTransactionsModal({
             const toAccountKeys = ['To Account', 'to account', 'ToAccount', 'toaccount'];
             let toAccountKey = '';
             for (const key of toAccountKeys) {
-              if (key in row) {
+              if (key in row && row[key] && row[key].trim() !== '') {
                 toAccountKey = key;
                 break;
               }
