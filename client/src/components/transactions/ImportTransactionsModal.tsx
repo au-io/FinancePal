@@ -323,13 +323,20 @@ export function ImportTransactionsModal({
             const descKey = 'Description' in row ? 'Description' : 'description';
             const description = row[descKey] ? row[descKey].trim() : '';
             
-            // Get source account from "From Account" column
-            const sourceKey = 'From Account' in row ? 'From Account' : 'from account';
+            // Find the From Account column with case insensitive matching
+            const fromAccountKeys = ['From Account', 'from account', 'FromAccount', 'fromaccount'];
+            let sourceKey = '';
+            for (const key of fromAccountKeys) {
+              if (key in row) {
+                sourceKey = key;
+                break;
+              }
+            }
             
             // Get transaction source account (required for all transaction types)
             let transactionAccountId = parseInt(accountId); // Default to selected account
             
-            if (row[sourceKey]) {
+            if (sourceKey && row[sourceKey]) {
               const sourceAccountName = row[sourceKey].trim();
               // Find the source account by name
               const sourceAccount = accounts.find(a => 
@@ -343,12 +350,19 @@ export function ImportTransactionsModal({
               }
             }
             
-            // Get destination account from "To Account" column for Transfer transactions
-            const toAccountKey = 'To Account' in row ? 'To Account' : 'to account';
+            // Find the To Account column with case insensitive matching
+            const toAccountKeys = ['To Account', 'to account', 'ToAccount', 'toaccount'];
+            let toAccountKey = '';
+            for (const key of toAccountKeys) {
+              if (key in row) {
+                toAccountKey = key;
+                break;
+              }
+            }
             
             // Skip transfer transactions without "To Account"
-            if (type === 'Transfer' && !row[toAccountKey]) {
-              throw new Error(`Transfer transaction requires a "To Account" value.`);
+            if (type === 'Transfer' && (!toAccountKey || !row[toAccountKey])) {
+              throw new Error(`Transfer transaction requires a "To Account" column and value.`);
             }
             
             // Create base transaction object - For Expense transactions, convert amount to negative
@@ -367,7 +381,7 @@ export function ImportTransactionsModal({
             };
             
             // If it's a transfer and has a "To Account", add it
-            if (type === 'Transfer' && row[toAccountKey]) {
+            if (type === 'Transfer' && toAccountKey && row[toAccountKey]) {
               // Find the account ID by name
               const destinationAccountName = row[toAccountKey].trim();
               const destinationAccount = accounts.find(a => 
