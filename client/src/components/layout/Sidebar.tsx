@@ -18,7 +18,8 @@ import {
   LogOut,
   Repeat,
   X,
-  User
+  User,
+  ChevronRight
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -40,37 +41,37 @@ export function Sidebar() {
     { 
       href: '/', 
       label: 'Dashboard', 
-      icon: <Home className="h-5 w-5 mr-3" /> 
+      icon: <Home className="h-4 w-4" /> 
     },
     { 
       href: '/accounts', 
       label: 'Accounts', 
-      icon: <Wallet className="h-5 w-5 mr-3" /> 
+      icon: <Wallet className="h-4 w-4" /> 
     },
     { 
       href: '/transactions', 
       label: 'Transactions', 
-      icon: <DollarSign className="h-5 w-5 mr-3" /> 
+      icon: <DollarSign className="h-4 w-4" /> 
     },
     { 
       href: '/recurring-transactions', 
       label: 'Recurring', 
-      icon: <Repeat className="h-5 w-5 mr-3" /> 
+      icon: <Repeat className="h-4 w-4" /> 
     },
     { 
       href: '/categories', 
       label: 'Categories', 
-      icon: <Tag className="h-5 w-5 mr-3" /> 
+      icon: <Tag className="h-4 w-4" /> 
     },
     { 
       href: '/family', 
       label: 'Family', 
-      icon: <Users className="h-5 w-5 mr-3" /> 
+      icon: <Users className="h-4 w-4" /> 
     },
     { 
       href: '/analytics', 
       label: 'Analytics', 
-      icon: <BarChart2 className="h-5 w-5 mr-3" /> 
+      icon: <BarChart2 className="h-4 w-4" /> 
     },
   ];
 
@@ -78,12 +79,12 @@ export function Sidebar() {
     { 
       href: '/admin/families', 
       label: 'Manage Families', 
-      icon: <UserCheck className="h-5 w-5 mr-3" /> 
+      icon: <UserCheck className="h-4 w-4" /> 
     },
     { 
       href: '/admin/users', 
       label: 'Manage Users', 
-      icon: <UserCog className="h-5 w-5 mr-3" /> 
+      icon: <UserCog className="h-4 w-4" /> 
     },
   ];
 
@@ -92,14 +93,25 @@ export function Sidebar() {
       <Link href={href}>
         <div 
           className={cn(
-            "flex items-center px-4 py-3 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer",
+            "flex items-center px-4 py-2.5 rounded-xl transition-colors cursor-pointer justify-between group",
             location === href 
-              ? "border-l-2 border-primary bg-primary/5 text-primary font-medium" 
-              : "text-gray-700"
+              ? "bg-primary/10 text-primary font-medium" 
+              : "text-gray-700 hover:bg-gray-50"
           )}
         >
-          {icon}
-          <span>{label}</span>
+          <div className="flex items-center">
+            <div className={cn(
+              "flex items-center justify-center w-8 h-8 rounded-full mr-3",
+              location === href ? "bg-primary text-white" : "bg-gray-100 text-gray-700 group-hover:bg-gray-200"
+            )}>
+              {icon}
+            </div>
+            <span className="tracking-tight">{label}</span>
+          </div>
+          <ChevronRight className={cn(
+            "h-4 w-4 opacity-0 transition-opacity", 
+            location === href ? "opacity-100 text-primary" : "group-hover:opacity-40"
+          )} />
         </div>
       </Link>
     </div>
@@ -143,28 +155,28 @@ export function Sidebar() {
             </Button>
           </div>
           
-          {/* Logo */}
-          <div className="hidden md:block mb-6">
-            <LogoWithText size="medium" withSubtitle={true} />
+          {/* Logo - Apple style */}
+          <div className="hidden md:block mb-6 px-4">
+            <LogoWithText size="large" textSize="2xl" withSubtitle={true} />
           </div>
           
-          {/* User Profile - Moved to top */}
+          {/* User Profile - Moved to top with Apple style */}
           {user && (
             <div className="mb-6 pb-4 border-b border-gray-200">
-              <div className="flex items-center">
-                <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center">
-                  <span>{user.name.charAt(0)}</span>
+              <div className="flex flex-col items-center mb-3">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary/80 text-white flex items-center justify-center shadow-sm mb-2">
+                  <span className="text-xl font-medium">{user.name.charAt(0)}</span>
                 </div>
-                <div className="ml-3">
-                  <p className="font-medium">{user.name}</p>
-                  <p className="text-xs text-gray-500">{user.email}</p>
+                <div className="text-center">
+                  <p className="font-medium tracking-tight">{user.name}</p>
+                  <p className="text-xs text-gray-500 tracking-tight">{user.email}</p>
                 </div>
               </div>
-              <div className="mt-3">
+              <div className="mt-2">
                 <SidebarLink 
                   href="/profile" 
                   label="My Profile" 
-                  icon={<User className="h-5 w-5 mr-3" />} 
+                  icon={<User className="h-4 w-4" />} 
                 />
               </div>
             </div>
@@ -181,11 +193,11 @@ export function Sidebar() {
               />
             ))}
             
-            {/* Admin Section */}
+            {/* Admin Section - Apple style */}
             {isAdmin && (
               <div className="pt-4 mt-4 border-t border-gray-200">
-                <p className="px-4 text-xs uppercase font-semibold text-gray-500 mb-2">
-                  Admin
+                <p className="px-4 text-xs font-medium text-gray-500 mb-2 tracking-tight">
+                  Administration
                 </p>
                 {adminLinks.map((link) => (
                   <SidebarLink 
@@ -199,17 +211,17 @@ export function Sidebar() {
             )}
           </nav>
           
-          {/* Sign Out Button - Kept at bottom */}
+          {/* Sign Out Button - Apple-inspired style */}
           {user && (
             <div className="mt-auto pt-4 border-t border-gray-200">
               <Button 
-                variant="outline" 
-                className="w-full flex items-center justify-center text-red-600 border-red-200 hover:bg-red-50"
+                variant="ghost" 
+                className="w-full flex items-center justify-center text-gray-700 hover:text-red-600 hover:bg-gray-50 rounded-xl transition-colors"
                 onClick={handleLogout}
                 disabled={logoutMutation.isPending}
               >
                 <LogOut className="h-4 w-4 mr-2" />
-                <span>Sign Out</span>
+                <span className="tracking-tight">Sign Out</span>
               </Button>
             </div>
           )}
