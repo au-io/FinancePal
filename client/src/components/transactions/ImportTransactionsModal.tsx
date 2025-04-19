@@ -323,46 +323,53 @@ export function ImportTransactionsModal({
             const descKey = 'Description' in row ? 'Description' : 'description';
             const description = row[descKey] ? row[descKey].trim() : '';
             
-            // Get destination account key
-            const destKey = 'DestinationAccount' in row ? 'DestinationAccount' : 'destinationAccount';
+            // Get source account from "From Account" column
+            const sourceKey = 'From Account' in row ? 'From Account' : 'from account';
             
-            // Skip transfer transactions without destination accounts
-            if (type === 'Transfer' && !row[destKey]) {
-              throw new Error(`Transfer transaction requires a destination account.`);
-            }
+            // Get transaction source account (required for all transaction types)
+            let transactionAccountId = parseInt(accountId); // Default to selected account
             
-            // Default to the selected account ID
-            let transactionAccountId = parseInt(accountId);
-            
-            // For Income and Expense transactions, if DestinationAccount is specified, use that account
-            if (row[destKey] && type !== 'Transfer') {
-              const specifiedAccountName = row[destKey].trim();
-              const specifiedAccount = accounts.find(a => 
-                a.name.toLowerCase() === specifiedAccountName.toLowerCase()
+            if (row[sourceKey]) {
+              const sourceAccountName = row[sourceKey].trim();
+              // Find the source account by name
+              const sourceAccount = accounts.find(a => 
+                a.name.toLowerCase() === sourceAccountName.toLowerCase()
               );
               
-              if (specifiedAccount) {
-                // For Income/Expense, override the account with the specified one
-                transactionAccountId = specifiedAccount.id;
+              if (sourceAccount) {
+                transactionAccountId = sourceAccount.id;
               } else {
-                throw new Error(`Account '${specifiedAccountName}' not found. Available accounts: ${accounts.map(a => a.name).join(', ')}`);
+                throw new Error(`Source account '${sourceAccountName}' not found. Available accounts: ${accounts.map(a => a.name).join(', ')}`);
               }
             }
             
-            // Create base transaction object
+            // Get destination account from "To Account" column for Transfer transactions
+            const toAccountKey = 'To Account' in row ? 'To Account' : 'to account';
+            
+            // Skip transfer transactions without "To Account"
+            if (type === 'Transfer' && !row[toAccountKey]) {
+              throw new Error(`Transfer transaction requires a "To Account" value.`);
+            }
+            
+            // Create base transaction object - For Expense transactions, convert amount to negative
+            let adjustedAmount = amount;
+            if (type === 'Expense') {
+              adjustedAmount = -Math.abs(amount); // Always make Expense negative
+            }
+            
             const transaction: any = {
               sourceAccountId: transactionAccountId,
-              amount: amount,
+              amount: adjustedAmount,
               type: type,
               category: category,
               description: description,
               date: parsedDate.toISOString(),
             };
             
-            // If it's a transfer and has a destination account, add it
-            if (type === 'Transfer' && row[destKey]) {
+            // If it's a transfer and has a "To Account", add it
+            if (type === 'Transfer' && row[toAccountKey]) {
               // Find the account ID by name
-              const destinationAccountName = row[destKey].trim();
+              const destinationAccountName = row[toAccountKey].trim();
               const destinationAccount = accounts.find(a => 
                 a.name.toLowerCase() === destinationAccountName.toLowerCase()
               );
@@ -479,14 +486,15 @@ export function ImportTransactionsModal({
             </div>
             <div className="space-y-1">
               <p className="text-xs text-gray-500">
-                CSV should have columns: Date, Amount, Type, Category, Description
+                CSV should have columns: Date, Type, Category, Description, Amount, From Account, To Account
               </p>
               <p className="text-xs text-gray-500">
-                You can add a 'DestinationAccount' column with an exact account name to:
+                Column descriptions:
               </p>
               <ul className="text-xs text-gray-500 list-disc pl-4 space-y-1">
-                <li>For Transfer transactions: Specify the receiving account (required)</li>
-                <li>For Income/Expense transactions: Override the selected account above</li>
+                <li><strong>From Account</strong>: Required for all transaction types - the account to debit/credit</li>
+                <li><strong>To Account</strong>: Required for Transfer transactions, optional for Income/Expense</li>
+                <li><strong>Amount</strong>: Always use positive numbers (expenses will be converted to negative)</li>
               </ul>
               
               <div className="pt-2">
@@ -500,68 +508,12 @@ export function ImportTransactionsModal({
                     onClick={async () => {
                       try {
                         await downloadFileFromApi(
-                          '/api/templates/regular-transactions',
-                          'regular-transactions-template.csv'
-                        );
-                        toast({
-                          title: 'Template downloaded',
-                          description: 'Regular transactions template downloaded successfully.'
-                        });
-                      } catch (error) {
-                        toast({
-                          title: 'Download failed',
-                          description: error instanceof Error ? error.message : 'Failed to download template',
-                          variant: 'destructive',
-                        });
-                      }
-                    }}
-                  >
-                    <Download className="h-3 w-3 mr-1" />
-                    Regular
-                  </Button>
-                  
-                  <Button 
-                    type="button" 
-                    size="sm" 
-                    variant="outline"
-                    className="text-xs h-8"
-                    onClick={async () => {
-                      try {
-                        await downloadFileFromApi(
-                          '/api/templates/transfer-transactions',
-                          'transfer-transactions-template.csv'
-                        );
-                        toast({
-                          title: 'Template downloaded',
-                          description: 'Transfer transactions template downloaded successfully.'
-                        });
-                      } catch (error) {
-                        toast({
-                          title: 'Download failed',
-                          description: error instanceof Error ? error.message : 'Failed to download template',
-                          variant: 'destructive',
-                        });
-                      }
-                    }}
-                  >
-                    <Download className="h-3 w-3 mr-1" />
-                    Transfer
-                  </Button>
-                  
-                  <Button 
-                    type="button" 
-                    size="sm" 
-                    variant="outline"
-                    className="text-xs h-8"
-                    onClick={async () => {
-                      try {
-                        await downloadFileFromApi(
                           '/api/templates/unified-transactions',
-                          'unified-transactions-template.csv'
+                          'transactions-template.csv'
                         );
                         toast({
                           title: 'Template downloaded',
-                          description: 'Unified transactions template downloaded successfully.'
+                          description: 'Transaction template downloaded successfully.'
                         });
                       } catch (error) {
                         toast({
@@ -573,7 +525,7 @@ export function ImportTransactionsModal({
                     }}
                   >
                     <Download className="h-3 w-3 mr-1" />
-                    Unified (New!)
+                    Download Template
                   </Button>
                 </div>
               </div>

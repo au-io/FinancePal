@@ -838,7 +838,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.send(csvContent);
   });
   
-  // Unified template for all transaction types (Income, Expense, Transfer)
+  // Simplified template for all transaction types (Income, Expense, Transfer)
   app.get("/api/templates/unified-transactions", requireAuth, async (req, res) => {
     const userId = req.user!.id;
     const accounts = await storage.getAccountsByUserId(userId);
@@ -854,39 +854,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const today = new Date().toISOString().split('T')[0];
     
     // Start with a documentation row that explains valid values
-    let csvContent = "# JoBa Finance - Unified Transaction Import Template\n";
+    let csvContent = "# JoBa Finance - Transaction Import Template\n";
     csvContent += "# Date Format: YYYY-MM-DD (e.g., 2025-04-18)\n";
     csvContent += "# Type: Must be one of: 'Income', 'Expense', or 'Transfer'\n";
     csvContent += "# Category: Housing, Transportation, Food, Utilities, Insurance, Healthcare, Savings, Personal, Entertainment, Education, Debt, Gifts, Salary, Business, Other\n";
-    csvContent += "# Amount: Always use POSITIVE numbers regardless of transaction type\n";
-    csvContent += "# DestinationAccount: Only required for Transfer transactions. For Income/Expense, leave blank or omit.\n";
+    csvContent += "# Amount: For Income & Transfer - use POSITIVE numbers, For Expense - use POSITIVE numbers (system will convert to negative)\n";
+    csvContent += "# From Account: Account where money comes from (required for all transaction types)\n";
+    csvContent += "# To Account: For Income - can be left empty, For Expense - can be left empty, For Transfer - required (destination account)\n";
     csvContent += `# Available accounts: ${accountsInfo}\n`;
+    csvContent += "#\n";
+    csvContent += "# Logic: \n";
+    csvContent += "# - Expense: Amount will be deducted from 'From Account'\n";
+    csvContent += "# - Income: Amount will be added to 'From Account'\n";
+    csvContent += "# - Transfer: Amount will be deducted from 'From Account' and added to 'To Account'\n";
     csvContent += "#\n";
     
     // Add header row
-    csvContent += "Date,Type,Category,Description,Amount,DestinationAccount\n";
+    csvContent += "Date,Type,Category,Description,Amount,From Account,To Account\n";
     
     // Add example rows
     const exampleRows = [
       // Income examples
-      `${today},Income,Salary,"Monthly Salary",1500,`,
-      `${today},Income,Business,"Freelance payment",250,`,
+      `${today},Income,Salary,"Monthly Salary",1500,"${sourceAccountName}",`,
+      `${today},Income,Business,"Freelance payment",250,"${sourceAccountName}",`,
       
       // Expense examples
-      `${today},Expense,Food,"Grocery shopping",85.50,`,
-      `${today},Expense,Transportation,"Gas for car",50.25,`,
-      `${today},Expense,Utilities,"Electricity bill",120,`,
+      `${today},Expense,Food,"Grocery shopping",85.50,"${sourceAccountName}",`,
+      `${today},Expense,Transportation,"Gas for car",50.25,"${sourceAccountName}",`,
+      `${today},Expense,Utilities,"Electricity bill",120,"${sourceAccountName}",`,
       
       // Transfer examples
-      `${today},Transfer,Transfer,"Transfer to savings",100,"${destAccountName}"`,
-      `${today},Transfer,Transfer,"Emergency fund",50,"${destAccountName}"`
+      `${today},Transfer,Transfer,"Transfer to savings",100,"${sourceAccountName}","${destAccountName}"`,
+      `${today},Transfer,Transfer,"Emergency fund",50,"${sourceAccountName}","${destAccountName}"`
     ];
     
     csvContent += exampleRows.join("\n");
     
     // Set headers for file download
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', 'attachment; filename=unified-transactions-template.csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=transactions-template.csv');
     
     res.send(csvContent);
   });
