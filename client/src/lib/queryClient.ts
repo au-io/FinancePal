@@ -47,6 +47,49 @@ export function parseCSV(text: string): Array<Record<string, string>> {
   // Normalize line endings and remove any BOM character
   const normalizedText = text.replace(/^\ufeff/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   
+  // Special case: Handle CSV with rows separated by multiple commas like your "sample copy.csv"
+  if (normalizedText.includes(",,,,,") && !normalizedText.includes('\n')) {
+    try {
+      console.log("Trying special CSV format parsing...");
+      
+      // Split by multiple commas (5 or more)
+      const parts = normalizedText.split(/,{5,}/);
+      
+      if (parts.length > 1) {
+        // First part should contain headers
+        const headers = parts[0].split(',').map(h => h.trim());
+        
+        // The rest are data rows
+        const result: Array<Record<string, string>> = [];
+        
+        // Process each data row
+        for (let i = 1; i < parts.length; i++) {
+          const rowData = parts[i];
+          if (!rowData.trim()) continue;
+          
+          const values = rowData.split(',');
+          if (values.length === 0) continue;
+          
+          const record: Record<string, string> = {};
+          headers.forEach((header, j) => {
+            record[header] = j < values.length ? values[j]?.trim() || '' : '';
+          });
+          
+          // Check if record has at least a date
+          if (record['Date'] || record['date']) {
+            result.push(record);
+          }
+        }
+        
+        console.log(`Special CSV format parsed ${result.length} records`);
+        return result;
+      }
+    } catch (e) {
+      console.error("Error in special CSV parsing, falling back to standard", e);
+    }
+  }
+  
+  // Standard parsing for normal CSVs
   // Clean up the text - fix common issues
   let cleanedText = normalizedText;
   
